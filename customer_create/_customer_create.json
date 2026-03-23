@@ -1,0 +1,367 @@
+{
+  "name": "/customer/create",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer/create",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0d3b3ac8-59d1-48d3-b894-e3b9bd947dc9",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        240
+      ],
+      "webhookId": "customer-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-name",
+              "name": "name",
+              "value": "={{ $json.body.name ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-phone",
+              "name": "phone",
+              "value": "={{ $json.body.phone ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-email",
+              "name": "email",
+              "value": "={{ $json.body.email ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $json.body.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "field-created-at",
+              "name": "created_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "58fa14aa-ae8a-4fe3-97a0-e7cfef4a147c",
+      "name": "Set Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1424,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const name = ($json.name || '').trim();\nconst phone = ($json.phone || '').trim();\nconst email = ($json.email || '').trim();\nconst tenant_id = ($json.tenant_id || '').trim();\nconst created_at = $json.created_at;\n\nconst errors = [];\n\n// Pflichtfelder prüfen\nif (!tenant_id) {\n  errors.push('tenant_id is required');\n}\n\nif (!name) {\n  errors.push('name is required');\n}\n\nconst hasPhone = phone.length > 0;\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst hasValidEmail = email.length > 0 && emailRegex.test(email);\n\nif (!hasPhone && !hasValidEmail) {\n  errors.push('phone or a valid email is required');\n} else if (email.length > 0 && !hasValidEmail) {\n  errors.push('email format is invalid');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0, // ✅ DAS ist entscheidend\n    errors,\n    name,\n    phone,\n    email,\n    tenant_id,\n    created_at\n  }\n}];"
+      },
+      "id": "a653fc2a-38a2-4f1e-932e-773629fa9ecb",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.id !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "699905c0-0ae5-46b7-9fed-7b9f95269dc1",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-success",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "resp-id",
+              "name": "id",
+              "value": "={{ $json.id ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "resp-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $json.tenant_id ?? null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "37c38b1f-34ab-4dd9-9407-d33a4ee7f398",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -128,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"data\": {\n    \"id\": \"{{$json.id}}\",\n    \"tenant_id\": \"{{$json.tenant_id}}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "74233697-2d53-4b7c-b162-5b7e754d40e2",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: false,\n  error: \"VALIDATION_ERROR\",\n  details: $json.errors || [\"Unknown error\"]\n} }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "c3e05a01-0ef1-4ea4-abf0-c792b7ca090f",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -416,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET LOCAL app.tenant_id = '{{ $json.tenant_id }}';\n\nINSERT INTO customers (name, phone, email, tenant_id, created_at)\nVALUES (\n  '{{ $json.name }}',\n  '{{ $json.phone }}',\n  '{{ $json.email }}',\n  '{{ $json.tenant_id }}',\n  '{{ $json.created_at }}'\n)\nRETURNING id, tenant_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -336,
+        48
+      ],
+      "id": "062511d1-b1ba-425b-888b-8bc71af6161e",
+      "name": "DB Insert",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET LOCAL app.tenant_id = '{{ $json.tenant_id }}';\n\nSELECT id\nFROM tenants\nWHERE id = '{{ $json.tenant_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1040,
+        368
+      ],
+      "id": "25280cfe-7199-4d5e-a4e0-3c9a929a3cc1",
+      "name": "Validate Tenant",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -560,
+        48
+      ],
+      "id": "dabdb2d3-1df0-4d2a-8a71-9b67b462b630",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Fields": {
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate": {
+      "main": [
+        [
+          {
+            "node": "Validate Tenant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid?": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Insert": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Tenant": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Is Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "DB Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9541c9a9-b958-409a-980a-59d06f767b5b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
+  },
+  "id": "ifgi3hq95xrOmA1D",
+  "tags": [
+    {
+      "updatedAt": "2026-03-18T21:55:16.631Z",
+      "createdAt": "2026-03-18T21:55:16.631Z",
+      "id": "yiaa53DCWGVZFo8L",
+      "name": "customer-service"
+    }
+  ]
+}

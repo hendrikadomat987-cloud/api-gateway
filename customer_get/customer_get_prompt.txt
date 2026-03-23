@@ -1,0 +1,9 @@
+Refactor the n8n workflow "customer/get" to match the secure architecture of "customer/create".
+
+CRITICAL:
+- Remove ALL header-based tenant usage
+- Use {{$json.body.tenant_id}} only
+- Enforce tenant filtering in all queries
+- Keep validation consistent with Create workflow
+
+Return FULL updated JSON.

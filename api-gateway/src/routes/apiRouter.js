@@ -1,0 +1,173 @@
+'use strict';
+
+const { Router } = require('express');
+const serviceMap     = require('../services/serviceMap');
+const { forwardRequest } = require('../utils/forwardRequest');
+const logger         = require('../utils/logger');
+
+// ── Public router  (/api/health, /api/services) ───────────────────────────
+const publicRouter = Router();
+
+publicRouter.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: serviceMap.listServices().map((s) => s.name),
+  });
+});
+
+publicRouter.get('/services', (req, res) => {
+  res.json({ success: true, data: serviceMap.listServices() });
+});
+
+// ── Protected router  (/api/:version/:service/:id?) ───────────────────────
+const protectedRouter = Router();
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+//   All HTTP methods forwarded as-is.
+protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
+  const { version, service, id } = req.params;
+
+  // Validate version format  (v1, v2, …)
+  if (!/^v\d+$/.test(version)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_VERSION',
+        message: `Invalid API version "${version}". Expected format: v1, v2, …`,
+      },
+    });
+  }
+
+  // Validate :id format when present (must be a valid UUID)
+  if (id && !UUID_RE.test(id)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code:    'INVALID_ID',
+        message: `Invalid ${service} ID format`,
+      },
+    });
+  }
+
+  // Check service is registered at all — unknown service → 404
+  if (!serviceMap.exists(service)) {
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: 'SERVICE_NOT_FOUND',
+        message: `Unknown service "${service}"`,
+      },
+    });
+  }
+
+  // PUT and DELETE require an :id — reject early before attempting resolution
+  if ((req.method === 'PUT' || req.method === 'DELETE') && !id) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code:    'MISSING_ID',
+        message: `${req.method} requests to "${service}" require an :id parameter`,
+      },
+    });
+  }
+
+  if (req.method === 'POST' && service === 'customer') {
+    const { name, email } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "name is required"
+        }
+      });
+    }
+
+    if (!email || email.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "email is required"
+        }
+      });
+    }
+  }
+
+  // Resolve method + id → concrete n8n webhook URL
+  // Returns null when the service exists but has no webhook for this method/id combo
+  const resolved = serviceMap.resolve(service, req.method, Boolean(id), id || null);
+  if (!resolved) {
+    return res.status(405).json({
+      success: false,
+      error: {
+        code: 'METHOD_NOT_ALLOWED',
+        message: `Service "${service}" does not support ${req.method}${id ? ' with an :id' : ''}`,
+      },
+    });
+  }
+
+  logger.info('Routing request', {
+    method: req.method,
+    version,
+    service,
+    id: id || null,
+    target: resolved.url,
+    requestId: req.id,
+  });
+
+  if (req.params && req.params.id) {
+    req.query = req.query || {};
+
+    if (req.query.id && req.query.id !== req.params.id) {
+      logger.warn('ID mismatch: query vs params', {
+        queryId:   req.query.id,
+        paramId:   req.params.id,
+        requestId: req.id,
+      });
+    }
+
+    req.query.id = req.params.id;
+  }
+
+  try {
+    const upstream = await forwardRequest({
+      req,
+      targetUrl: resolved.url,
+      extraMeta: { version, service, id: id || null },
+    });
+
+    res
+      .status(upstream.status)
+      .set(pickSafeHeaders(upstream.headers))
+      .json(upstream.data);
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const SAFE_RESPONSE_HEADERS = new Set([
+  'content-type',
+  'x-request-id',
+  'x-ratelimit-limit',
+  'x-ratelimit-remaining',
+  'x-ratelimit-reset',
+  'cache-control',
+  'etag',
+]);
+
+function pickSafeHeaders(headers) {
+  const safe = {};
+  for (const [key, value] of Object.entries(headers || {})) {
+    if (SAFE_RESPONSE_HEADERS.has(key.toLowerCase())) safe[key] = value;
+  }
+  return safe;
+}
+
+module.exports = { publicRouter, protectedRouter };
