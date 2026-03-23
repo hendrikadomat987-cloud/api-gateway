@@ -97,6 +97,44 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
+  if (req.method === 'PUT' && service === 'customer') {
+    // ── Sanitize: strip everything except allowed fields and tenant_id ────────
+    // tenant_id is removed here; forwardRequest will re-inject it from req.tenant_id
+    const { name, phone, email } = req.body || {};
+    req.body = {};
+    if (name  !== undefined) req.body.name  = typeof name  === 'string' ? name.trim()  : name;
+    if (phone !== undefined) req.body.phone = typeof phone === 'string' ? phone.trim() : phone;
+    if (email !== undefined) req.body.email = typeof email === 'string' ? email.trim() : email;
+
+    if (req.body.email) req.body.email = req.body.email.toLowerCase();
+
+    // ── At least one field must be present ────────────────────────────────────
+    const hasName  = req.body.name  !== undefined && String(req.body.name).trim()  !== '';
+    const hasPhone = req.body.phone !== undefined && String(req.body.phone).trim() !== '';
+    const hasEmail = req.body.email !== undefined && String(req.body.email).trim() !== '';
+
+    if (!hasName && !hasPhone && !hasEmail) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of name, phone, or email is required',
+        },
+      });
+    }
+
+    // ── Email format validation (when provided) ───────────────────────────────
+    if (hasEmail && (!req.body.email.includes('@') || !req.body.email.includes('.'))) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid email format',
+        },
+      });
+    }
+  }
+
   // Resolve method + id → concrete n8n webhook URL
   // Returns null when the service exists but has no webhook for this method/id combo
   const resolved = serviceMap.resolve(service, req.method, Boolean(id), id || null);

@@ -1,0 +1,68 @@
+You are an expert backend engineer specializing in Node.js API Gateways for multi-tenant SaaS systems.
+
+Your task is to IMPROVE the existing API Gateway by adding proper validation and handling for:
+
+Customer UPDATE (PUT)
+
+PROJECT PATH CONTEXT:
+C:\Users\hendr\claude-ai-voice-agent\api-gateway\
+
+Work especially with:
+- apiRouter.js
+- serviceMap.js
+- forwardRequest.js
+- config.js
+
+---
+
+DO NOT change routing structure, serviceMap logic, or forwardRequest behavior.
+
+---
+
+TASKS:
+
+1. ADD VALIDATION FOR PUT /customer/:id
+
+- At least ONE of:
+  name, phone, email must exist
+
+Else return:
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "At least one of name, phone, or email is required"
+  }
+}
+
+---
+
+2. EMAIL VALIDATION
+
+If email exists:
+- must include '@' and '.'
+
+Else return VALIDATION_ERROR
+
+---
+
+3. SANITIZE INPUT
+
+Allow ONLY:
+- name
+- phone
+- email
+
+Remove everything else from req.body
+
+---
+
+4. TENANT SECURITY
+
+- NEVER trust tenant_id from client
+- Only use req.tenant_id
+
+---
+
+OUTPUT:
+Return ONLY updated apiRouter.js
