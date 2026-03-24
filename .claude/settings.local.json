@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "mcp__n8n-mcp__tools_documentation"
+      "mcp__n8n-mcp__tools_documentation",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__read_text_file",
+      "Bash(npm install:*)",
+      "Bash(node -e \"require\\(''./core/apiClient''\\); require\\(''./core/assertions''\\); require\\(''./core/testRunner''\\); console.log\\(''All core modules load OK''\\)\")",
+      "Bash(node -e \"const s = require\\(''./tests/customer/customer.crud.test.js''\\); console.log\\(''Suite loaded:'', s.name, ''| tests registered:'', typeof s.run\\)\")",
+      "mcp__n8n-mcp__n8n_list_workflows",
+      "Read(//c/Users/hendr/.claude/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); mcps=d.get\\(''''mcpServers'''',{}\\); [print\\(k,''''->'''',v\\) for k,v in mcps.items\\(\\)]\")",
+      "Bash(curl -s --max-time 5 \"http://46.225.102.88:5678/healthz\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(find C:/Users/hendr -maxdepth 4 -name *.json)",
+      "Bash(xargs grep:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "Bash(find C:/Users/hendr/AppData -name *.json)",
+      "Bash(env)",
+      "Bash(curl -s --max-time 3 http://localhost:5678/healthz)"
     ]
   }
 }

@@ -51,6 +51,32 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     });
   }
 
+  // Reject query-param id bypass: ?id= must never substitute for or override :id
+  const pathId  = id;
+  const queryId = req.query.id;
+
+  // Case 1: Query ID present without a path ID → reject
+  if (!pathId && queryId) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code:    'INVALID_ID',
+        message: 'Query parameter id is not allowed without path parameter',
+      },
+    });
+  }
+
+  // Case 2: Query ID present but mismatches path ID → reject
+  if (queryId && queryId !== pathId) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code:    'INVALID_ID',
+        message: 'Query parameter id must not override path parameter',
+      },
+    });
+  }
+
   // Check service is registered at all — unknown service → 404
   if (!serviceMap.exists(service)) {
     return res.status(404).json({

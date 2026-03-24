@@ -7,13 +7,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "e6e9e321-53df-49fb-8fc2-8810679a36e7",
+      "id": "0f88b8b1-58c2-4fb9-ac8a-301a0d96c6ee",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -1680,
-        368
+        -1520,
+        240
       ],
       "webhookId": "2782bbef-520e-42ff-9a5f-42d491637ce4"
     },
@@ -37,26 +37,26 @@
         },
         "options": {}
       },
-      "id": "e4e44041-fe12-41de-a4f3-c774341bdb6f",
+      "id": "2f53eb51-ad33-42d2-b853-4709c484a9d4",
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1504,
-        368
+        -1344,
+        240
       ]
     },
     {
       "parameters": {
         "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\n\nconst errors = [];\n\nif (!tenant_id) {\n  errors.push('tenant_id is required');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
       },
-      "id": "257290da-1df7-4d7c-b621-4c200606ac4c",
+      "id": "3387ff96-f3be-4f86-8bcc-52b2496d461b",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1312,
-        496
+        -1152,
+        368
       ]
     },
     {
@@ -83,13 +83,13 @@
         },
         "options": {}
       },
-      "id": "cabfdff0-a11c-4a6b-9fa7-3bea479fcac8",
+      "id": "6e2c47fc-02d9-4900-9fd0-6c09ec802a6d",
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1120,
-        496
+        -960,
+        368
       ]
     },
     {
@@ -101,10 +101,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -960,
-        368
+        -800,
+        240
       ],
-      "id": "a7ad515c-efae-4f9f-89ee-b2fecefa21cc",
+      "id": "fc256e07-5ad0-47c1-b91e-a5ced914c90a",
       "name": "Validate Tenant",
       "credentials": {
         "postgres": {
@@ -142,10 +142,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -624,
-        240
+        -464,
+        112
       ],
-      "id": "984f5ca0-a1fb-4454-ac13-dd1e412d20d8",
+      "id": "915523c6-43b1-4c80-b356-ef8bc1fbac05",
       "name": "Has ID?"
     },
     {
@@ -159,10 +159,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -416,
-        176
+        -256,
+        48
       ],
-      "id": "a55147a9-7302-4bd8-ab02-f555456704a2",
+      "id": "8af2bbbf-8694-4a38-83a4-c863e9b0872c",
       "name": "GET customer by ID",
       "credentials": {
         "postgres": {
@@ -180,10 +180,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -432,
-        336
+        -272,
+        208
       ],
-      "id": "7d3320ca-0691-4f51-b054-d27661ef04ae",
+      "id": "a039316c-1f7f-457f-b1a6-ed4770e5a424",
       "name": "Get All Customers",
       "credentials": {
         "postgres": {
@@ -204,7 +204,7 @@
           "conditions": [
             {
               "id": "ebc5aaf9-8f47-40c1-8fe9-9ec82330e513",
-              "leftValue": "={{$json.length}}",
+              "leftValue": "=={{ $input.all().length }}",
               "rightValue": "0",
               "operator": {
                 "type": "string",
@@ -220,10 +220,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -240,
-        48
+        -80,
+        -80
       ],
-      "id": "dbe79ff6-1251-49e2-948c-498bbb3839d0",
+      "id": "470b5a54-e081-4517-8783-838e2b50b072",
       "name": "Customer found?"
     },
     {
@@ -231,10 +231,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        0,
-        176
+        160,
+        48
       ],
-      "id": "a440cd57-32d4-42a8-97a2-364b68a43225",
+      "id": "7efcf4f4-d440-44d9-b417-711d1c6bff02",
       "name": "Merge"
     },
     {
@@ -250,33 +250,33 @@
             {
               "id": "resp-data",
               "name": "data",
-              "value": "={{ $input.all().map(item => item.json) }}",
+              "value": "={{ $input.all().length === 1 ? $input.first().json : $input.all().map(item => item.json) }}",
               "type": "json"
             }
           ]
         },
         "options": {}
       },
-      "id": "3d134a6e-6b72-4db4-a892-9dcb27c072ff",
+      "id": "1896e04d-0fba-4c65-bd75-820a47d8e0cf",
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        176,
-        176
+        336,
+        48
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "79d919d0-7abe-47ed-ba06-5dc217219609",
+      "id": "83ffb76a-7e2d-4c80-91f1-5c6e7a6310ab",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        352,
-        176
+        512,
+        48
       ]
     },
     {
@@ -287,13 +287,13 @@
           "responseCode": 400
         }
       },
-      "id": "08ff3fd0-913e-4bd2-9cc2-e01d48648092",
+      "id": "d68de3e0-1e3f-4af7-be2e-b1f95594ed53",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -896,
-        624
+        -736,
+        496
       ]
     },
     {
@@ -304,13 +304,13 @@
           "responseCode": 404
         }
       },
-      "id": "f3f5091d-9080-4aae-b638-ccba6f66ca39",
+      "id": "09f9ba0c-eea9-44c5-b223-274de03b7f3a",
       "name": "Respond Error1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        0,
-        0
+        160,
+        -128
       ]
     },
     {
@@ -322,10 +322,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -800,
-        240
+        -640,
+        112
       ],
-      "id": "b2f03918-4c73-43f8-83bb-3ae675c0d903",
+      "id": "7d31da88-f621-4c3a-b35d-0c8230433f78",
       "name": "Merge1"
     }
   ],
@@ -496,11 +496,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "515c411d-b4f4-4aed-8111-f8510485aee9",
+  "versionId": "a1a82f61-11e0-4a01-8d82-063493d54e59",
   "meta": {
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
   },
-  "id": "Chzs520DacuLr1v8",
+  "id": "1hbLaMDhK8xcwUcH",
   "tags": [
     {
       "updatedAt": "2026-03-18T21:55:16.631Z",

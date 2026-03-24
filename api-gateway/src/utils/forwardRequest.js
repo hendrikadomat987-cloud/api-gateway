@@ -50,10 +50,11 @@ async function forwardRequest({ req, targetUrl, extraMeta = {} }) {
   const meta = { ...extraMeta, query: req.query };
   forwardHeaders['X-Gateway-Meta'] = JSON.stringify(meta);
 
-  // Route :id always wins — spread req.query first so extraMeta.id overrides any ?id= from client
+  // Strip any client-supplied ?id= — path param id is the only authoritative source
+  const { id: _clientId, ...queryWithoutId } = req.query;
   const queryParams = extraMeta.id
-    ? { ...req.query, id: extraMeta.id }
-    : req.query;
+    ? { ...queryWithoutId, id: extraMeta.id }
+    : queryWithoutId;
 
   logger.debug('Forwarding request', {
     method:      req.method,
