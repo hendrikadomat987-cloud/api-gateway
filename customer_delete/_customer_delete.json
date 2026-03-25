@@ -57,7 +57,7 @@
       "typeVersion": 2,
       "position": [
         -1280,
-        192
+        64
       ]
     },
     {
@@ -90,44 +90,8 @@
       "typeVersion": 2,
       "position": [
         -1088,
-        192
+        64
       ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SET LOCAL app.tenant_id = '{{ $json.tenant_id }}';\n\nSELECT id as tenant_id\nFROM tenants\nWHERE id = '{{ $json.tenant_id }}';",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -880,
-        64
-      ],
-      "id": "8d89e39a-358a-4fe0-b3c3-d48fecc00e07",
-      "name": "Validate Tenant",
-      "credentials": {
-        "postgres": {
-          "id": "Enm2PEWvhVMtE5CI",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        -688,
-        64
-      ],
-      "id": "db1bd747-2395-4e85-b4ec-1b4986d56b37",
-      "name": "Merge"
     },
     {
       "parameters": {
@@ -158,7 +122,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -496,
+        -864,
         64
       ],
       "id": "f8eb9650-d7e5-43c9-a57b-4ac004a89957",
@@ -167,16 +131,17 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "DELETE FROM customers\nWHERE id = $1\nAND tenant_id = $2\nRETURNING id, tenant_id;",
+        "query": "select public.customer_delete($1, $2) as id;",
         "options": {
-          "queryReplacement": "={{$json.id}},{{$json.tenant_id}}"
+          "queryReplacement": "={{ [$json.tenant_id, $json.id] }}"
         }
       },
+      "onError": "continueRegularOutput",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -272,
-        0
+        -624,
+        -32
       ],
       "id": "7ca29846-131e-4eaa-9a1c-6298c0264cc6",
       "name": "DB DELETE",
@@ -186,6 +151,39 @@
           "name": "Postgres account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-db-error",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        -32
+      ],
+      "id": "b1c2d3e4-f5a6-7890-bcde-db0error0001",
+      "name": "DB DELETE Error?"
     },
     {
       "parameters": {
@@ -215,8 +213,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -80,
-        0
+        -176,
+        -32
       ],
       "id": "afaf3d98-5856-4d20-b808-31c39f785c22",
       "name": "Rows Affected?"
@@ -234,7 +232,7 @@
             {
               "id": "resp-id",
               "name": "id",
-              "value": "={{ $json.id }}",
+              "value": "={{ $json.id ?? $('Validate').item.json.id }}",
               "type": "string"
             }
           ]
@@ -246,8 +244,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        128,
-        -96
+        48,
+        -128
       ]
     },
     {
@@ -261,8 +259,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        320,
-        -96
+        256,
+        -128
       ]
     },
     {
@@ -278,8 +276,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -880,
-        320
+        -1088,
+        256
       ]
     },
     {
@@ -295,8 +293,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -272,
-        224
+        -624,
+        192
       ]
     },
     {
@@ -312,7 +310,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        192,
+        48,
         96
       ]
     }
@@ -337,11 +335,6 @@
             "node": "Validate",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -361,7 +354,7 @@
       "main": [
         [
           {
-            "node": "Validate Tenant",
+            "node": "Has ID?",
             "type": "main",
             "index": 0
           }
@@ -369,28 +362,6 @@
         [
           {
             "node": "Respond Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Tenant": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "Has ID?",
             "type": "main",
             "index": 0
           }
@@ -419,6 +390,24 @@
       "main": [
         [
           {
+            "node": "DB DELETE Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB DELETE Error?": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Rows Affected?",
             "type": "main",
             "index": 0
@@ -437,7 +426,7 @@
         ],
         [
           {
-            "node": "Respond Error2",
+            "node": "Format Response",
             "type": "main",
             "index": 0
           }

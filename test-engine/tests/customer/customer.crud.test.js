@@ -205,7 +205,7 @@ suite.test('DELETE customer — invalid UUID → INVALID_ID', async () => {
   assertError(res, 'INVALID_ID');
 });
 
-suite.test('DELETE customer — already deleted resource → NOT_FOUND', async () => {
+suite.test('DELETE customer — already deleted resource → idempotent success', async () => {
   // Create a temporary customer, delete it once, then attempt a second delete
   const createRes = await client.post('/customer', {
     name:  'Temp Delete Test',
@@ -219,8 +219,9 @@ suite.test('DELETE customer — already deleted resource → NOT_FOUND', async (
   assertSuccess(firstDelete);
 
   const secondDelete = await client.delete(`/customer/${tempId}`);
-  assertStatus(secondDelete, 404);
-  assertError(secondDelete, 'NOT_FOUND');
+  assertStatus(secondDelete, 200);
+  assertSuccess(secondDelete);
+  assertField(secondDelete, 'deleted', true);
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

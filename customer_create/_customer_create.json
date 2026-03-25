@@ -67,7 +67,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const name = ($json.name || '').trim();\nconst phone = ($json.phone || '').trim();\nconst email = ($json.email || '').trim();\nconst tenant_id = ($json.tenant_id || '').trim();\nconst created_at = $json.created_at;\n\nconst errors = [];\n\n// Pflichtfelder prüfen\nif (!tenant_id) {\n  errors.push('tenant_id is required');\n}\n\nif (!name) {\n  errors.push('name is required');\n}\n\nconst hasPhone = phone.length > 0;\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst hasValidEmail = email.length > 0 && emailRegex.test(email);\n\nif (!hasPhone && !hasValidEmail) {\n  errors.push('phone or a valid email is required');\n} else if (email.length > 0 && !hasValidEmail) {\n  errors.push('email format is invalid');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0, // ✅ DAS ist entscheidend\n    errors,\n    name,\n    phone,\n    email,\n    tenant_id,\n    created_at\n  }\n}];"
+        "jsCode": "const name = ($json.name || '').trim();\nconst phone = ($json.phone || '').trim();\nconst email = ($json.email || '').trim();\nconst tenant_id = ($json.tenant_id || '').trim();\nconst created_at = $json.created_at;\n\nconst errors = [];\n\n// Pflichtfelder prüfen\nif (!tenant_id) {\n  errors.push('tenant_id is required');\n}\n\nif (!name) {\n  errors.push('name is required');\n}\n\nconst hasPhone = phone.length > 0;\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst hasValidEmail = email.length > 0 && emailRegex.test(email);\n\nif (!hasPhone && !hasValidEmail) {\n  errors.push('phone or a valid email is required');\n} else if (email.length > 0 && !hasValidEmail) {\n  errors.push('email format is invalid');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    name,\n    phone,\n    email,\n    tenant_id,\n    created_at\n  }\n}];"
       },
       "id": "a653fc2a-38a2-4f1e-932e-773629fa9ecb",
       "name": "Validate",
@@ -75,7 +75,7 @@
       "typeVersion": 2,
       "position": [
         -1232,
-        368
+        240
       ]
     },
     {
@@ -90,7 +90,7 @@
           "conditions": [
             {
               "id": "cond-valid",
-              "leftValue": "={{ $json.id !== undefined }}",
+              "leftValue": "={{ $json.valid === true }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -107,9 +107,32 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -720,
-        336
+        -1040,
+        240
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from public.customer_create($1, $2, $3, $4);",
+        "options": {
+          "queryReplacement": "={{ [$json.tenant_id, $json.name, $json.phone, $json.email] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -720,
+        160
+      ],
+      "id": "062511d1-b1ba-425b-888b-8bc71af6161e",
+      "name": "DB Insert",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
@@ -142,8 +165,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -128,
-        48
+        -480,
+        160
       ]
     },
     {
@@ -157,8 +180,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        64,
-        48
+        -288,
+        160
       ]
     },
     {
@@ -166,7 +189,7 @@
         "respondWith": "json",
         "responseBody": "={{ {\n  success: false,\n  error: \"VALIDATION_ERROR\",\n  details: $json.errors || [\"Unknown error\"]\n} }}",
         "options": {
-          "responseCode": 404
+          "responseCode": 400
         }
       },
       "id": "c3e05a01-0ef1-4ea4-abf0-c792b7ca090f",
@@ -174,66 +197,9 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -416,
+        -720,
         352
       ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SET LOCAL app.tenant_id = '{{ $json.tenant_id }}';\n\nINSERT INTO customers (name, phone, email, tenant_id, created_at)\nVALUES (\n  '{{ $json.name }}',\n  '{{ $json.phone }}',\n  '{{ $json.email }}',\n  '{{ $json.tenant_id }}',\n  '{{ $json.created_at }}'\n)\nRETURNING id, tenant_id;",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -336,
-        48
-      ],
-      "id": "062511d1-b1ba-425b-888b-8bc71af6161e",
-      "name": "DB Insert",
-      "credentials": {
-        "postgres": {
-          "id": "Enm2PEWvhVMtE5CI",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SET LOCAL app.tenant_id = '{{ $json.tenant_id }}';\n\nSELECT id\nFROM tenants\nWHERE id = '{{ $json.tenant_id }}';",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -1040,
-        368
-      ],
-      "id": "25280cfe-7199-4d5e-a4e0-3c9a929a3cc1",
-      "name": "Validate Tenant",
-      "credentials": {
-        "postgres": {
-          "id": "Enm2PEWvhVMtE5CI",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        -560,
-        48
-      ],
-      "id": "dabdb2d3-1df0-4d2a-8a71-9b67b462b630",
-      "name": "Merge"
     }
   ],
   "pinData": {},
@@ -256,11 +222,6 @@
             "node": "Validate",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -269,7 +230,7 @@
       "main": [
         [
           {
-            "node": "Validate Tenant",
+            "node": "Is Valid?",
             "type": "main",
             "index": 0
           }
@@ -280,7 +241,7 @@
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "DB Insert",
             "type": "main",
             "index": 0
           }
@@ -288,17 +249,6 @@
         [
           {
             "node": "Respond Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Response": {
-      "main": [
-        [
-          {
-            "node": "Respond Success",
             "type": "main",
             "index": 0
           }
@@ -316,27 +266,11 @@
         ]
       ]
     },
-    "Validate Tenant": {
+    "Format Response": {
       "main": [
         [
           {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          },
-          {
-            "node": "Is Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "DB Insert",
+            "node": "Respond Success",
             "type": "main",
             "index": 0
           }

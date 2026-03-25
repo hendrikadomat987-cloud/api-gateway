@@ -125,62 +125,6 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SET LOCAL app.tenant_id = $1;\n\nSELECT 1\nFROM tenants\nWHERE id = $1;",
-        "options": {
-          "queryParams": "={{ [$json.tenant_id] }}"
-        }
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -816,
-        64
-      ],
-      "id": "c5a6b7d8-e9fa-1234-efab-555555555555",
-      "name": "Validate Tenant",
-      "credentials": {
-        "postgres": {
-          "id": "Enm2PEWvhVMtE5CI",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 1
-          },
-          "conditions": [
-            {
-              "id": "cond-tenant-exists",
-              "leftValue": "={{ $json.length > 0 }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "c6a7b8d9-eafb-2345-fabc-666666666666",
-      "name": "Tenant Exists?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        -592,
-        64
-      ]
-    },
-    {
-      "parameters": {
         "assignments": {
           "assignments": [
             {
@@ -222,22 +166,22 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -368,
+        -816,
         64
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE customers\nSET\n  name = COALESCE($1, name),\n  phone = COALESCE($2, phone),\n  email = COALESCE($3, email)\nWHERE id = $4\nAND tenant_id = $5\nRETURNING id, tenant_id;",
+        "query": "select * from public.customer_update($1, $2, $3, $4, $5);",
         "options": {
-          "queryParams": "={{ [$json.name, $json.phone, $json.email, $json.id, $json.tenant_id] }}"
+          "queryReplacement": "={{ [$json.tenant_id, $json.id, $json.name, $json.phone, $json.email] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -144,
+        -592,
         64
       ],
       "id": "c8a9badb-ecfd-4567-bcde-888888888888",
@@ -277,7 +221,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        80,
+        -368,
         64
       ],
       "id": "c9aabbdc-edfe-5678-cdef-999999999999",
@@ -308,7 +252,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        304,
+        -144,
         -48
       ]
     },
@@ -323,7 +267,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        528,
+        80,
         -48
       ]
     },
@@ -347,23 +291,6 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: false, error: { code: 'TENANT_NOT_FOUND', message: 'Tenant not found' } } }}",
-        "options": {
-          "responseCode": 404
-        }
-      },
-      "id": "cf001122-ddee-1234-abcd-ffffffffffff",
-      "name": "Respond Tenant Not Found",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        -592,
-        288
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
         "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found for this tenant' } } }}",
         "options": {
           "responseCode": 404
@@ -374,8 +301,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        80,
-        288
+        -368,
+        192
       ]
     }
   ],
@@ -418,35 +345,6 @@
       "main": [
         [
           {
-            "node": "Validate Tenant",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Tenant": {
-      "main": [
-        [
-          {
-            "node": "Tenant Exists?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tenant Exists?": {
-      "main": [
-        [
-          {
             "node": "Normalize Input",
             "type": "main",
             "index": 0
@@ -454,7 +352,7 @@
         ],
         [
           {
-            "node": "Respond Tenant Not Found",
+            "node": "Respond Error",
             "type": "main",
             "index": 0
           }

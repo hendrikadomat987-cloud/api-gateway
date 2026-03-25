@@ -38,7 +38,8 @@ function tenantContext(req, res, next) {
     return res.status(403).json(error('TENANT_MISMATCH', 'x-tenant-id does not match token tenant'));
   }
 
-  req.tenant_id = organization_id;
+  req.tenant_id     = organization_id;
+  req.tenant_source = 'jwt';
   next();
 }
 

@@ -17,7 +17,8 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
       "Bash(find C:/Users/hendr/AppData -name *.json)",
       "Bash(env)",
-      "Bash(curl -s --max-time 3 http://localhost:5678/healthz)"
+      "Bash(curl -s --max-time 3 http://localhost:5678/healthz)",
+      "mcp__filesystem__list_directory"
     ]
   }
 }

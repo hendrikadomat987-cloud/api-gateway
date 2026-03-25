@@ -100,25 +100,25 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
   }
 
   if (req.method === 'POST' && service === 'customer') {
-    const { name, email } = req.body;
+    // ── Sanitize: strip everything except allowed fields ──────────────────
+    // tenant_id is intentionally excluded — forwardRequest re-injects it from JWT
+    const { name, email, phone } = req.body || {};
+    req.body = {};
+    if (name  !== undefined) req.body.name  = typeof name  === 'string' ? name.trim()  : name;
+    if (email !== undefined) req.body.email = typeof email === 'string' ? email.trim().toLowerCase() : email;
+    if (phone !== undefined) req.body.phone = typeof phone === 'string' ? phone.trim() : phone;
 
-    if (!name || name.trim() === "") {
+    if (!req.body.name || req.body.name === '') {
       return res.status(400).json({
         success: false,
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "name is required"
-        }
+        error: { code: 'VALIDATION_ERROR', message: 'name is required' },
       });
     }
 
-    if (!email || email.trim() === "") {
+    if (!req.body.email || req.body.email === '') {
       return res.status(400).json({
         success: false,
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "email is required"
-        }
+        error: { code: 'VALIDATION_ERROR', message: 'email is required' },
       });
     }
   }

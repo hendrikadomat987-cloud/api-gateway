@@ -56,7 +56,7 @@
       "typeVersion": 2,
       "position": [
         -1152,
-        368
+        240
       ]
     },
     {
@@ -89,29 +89,8 @@
       "typeVersion": 2,
       "position": [
         -960,
-        368
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SET LOCAL app.tenant_id = '{{ $json.tenant_id }}';\n\nSELECT id as tenant_id\nFROM tenants\nWHERE id = '{{ $json.tenant_id }}';",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -800,
         240
-      ],
-      "id": "fc256e07-5ad0-47c1-b91e-a5ced914c90a",
-      "name": "Validate Tenant",
-      "credentials": {
-        "postgres": {
-          "id": "Enm2PEWvhVMtE5CI",
-          "name": "Postgres account"
-        }
-      }
+      ]
     },
     {
       "parameters": {
@@ -142,8 +121,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -464,
-        112
+        -720,
+        240
       ],
       "id": "915523c6-43b1-4c80-b356-ef8bc1fbac05",
       "name": "Has ID?"
@@ -151,16 +130,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, name, phone, email, created_at\nFROM customers\nWHERE tenant_id = '{{ $json.tenant_id }}'\nAND id = '{{ $json.id }}'\nLIMIT 1",
+        "query": "select * from public.customer_get_by_id($1, $2);",
         "options": {
-          "queryReplacement": "=={{ [$('Validate').item.json.tenant_id, $('Validate').item.json.id] }}"
+          "queryReplacement": "={{ [$('Validate').item.json.tenant_id, $('Validate').item.json.id] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -256,
-        48
+        -496,
+        112
       ],
       "id": "8af2bbbf-8694-4a38-83a4-c863e9b0872c",
       "name": "GET customer by ID",
@@ -174,14 +153,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, name, phone, email, created_at\nFROM customers\nWHERE tenant_id = '{{ $json.tenant_id }}'\nORDER BY created_at DESC\nLIMIT 50",
-        "options": {}
+        "query": "select * from public.customer_get_all($1);",
+        "options": {
+          "queryReplacement": "={{ [$('Validate').item.json.tenant_id] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -272,
-        208
+        -496,
+        368
       ],
       "id": "a039316c-1f7f-457f-b1a6-ed4770e5a424",
       "name": "Get All Customers",
@@ -220,8 +201,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -80,
-        -80
+        -256,
+        112
       ],
       "id": "470b5a54-e081-4517-8783-838e2b50b072",
       "name": "Customer found?"
@@ -231,8 +212,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        160,
-        48
+        -32,
+        240
       ],
       "id": "7efcf4f4-d440-44d9-b417-711d1c6bff02",
       "name": "Merge"
@@ -262,8 +243,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        336,
-        48
+        176,
+        240
       ]
     },
     {
@@ -275,8 +256,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        512,
-        48
+        368,
+        240
       ]
     },
     {
@@ -292,8 +273,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -736,
-        496
+        -720,
+        432
       ]
     },
     {
@@ -309,24 +290,9 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        160,
-        -128
+        -32,
+        -32
       ]
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        -640,
-        112
-      ],
-      "id": "7d31da88-f621-4c3a-b35d-0c8230433f78",
-      "name": "Merge1"
     }
   ],
   "pinData": {},
@@ -349,11 +315,6 @@
             "node": "Validate",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge1",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -373,7 +334,7 @@
       "main": [
         [
           {
-            "node": "Validate Tenant",
+            "node": "Has ID?",
             "type": "main",
             "index": 0
           }
@@ -383,17 +344,6 @@
             "node": "Respond Error",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Tenant": {
-      "main": [
-        [
-          {
-            "node": "Merge1",
-            "type": "main",
-            "index": 1
           }
         ]
       ]
@@ -472,17 +422,6 @@
         [
           {
             "node": "Respond Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge1": {
-      "main": [
-        [
-          {
-            "node": "Has ID?",
             "type": "main",
             "index": 0
           }

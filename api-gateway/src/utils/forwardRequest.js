@@ -57,18 +57,30 @@ async function forwardRequest({ req, targetUrl, extraMeta = {} }) {
     : queryWithoutId;
 
   logger.debug('Forwarding request', {
-    method:      req.method,
+    method:       req.method,
     targetUrl,
     queryParams,
-    id:          extraMeta.id   || null,
-    service:     extraMeta.service || null,
-    tenant:      extraMeta.tenant  || req.tenant_id || null,
-    requestId:   req.id,
+    id:           extraMeta.id     || null,
+    service:      extraMeta.service || null,
+    tenantSource: req.tenant_source || null,
+    requestId:    req.id,
   });
 
   const startMs = Date.now();
 
-  // Overwrite any client-supplied tenant_id with the trusted JWT value
+  // Build a safe body: spread the sanitized request body (extra fields already
+  // stripped by the router) then unconditionally set tenant_id from the verified
+  // JWT — never from client input. This is the final enforcement point.
+  if (!req.tenant_id) {
+    // Should never reach here — tenantContext blocks requests without a tenant.
+    // Guard defensively to prevent silent data leaks.
+    logger.error('forwardRequest called without req.tenant_id — request blocked', {
+      requestId: req.id,
+      path:      req.originalUrl,
+    });
+    throw Object.assign(new Error('Tenant context missing'), { statusCode: 500, code: 'MISSING_TENANT' });
+  }
+
   const safeBody = { ...req.body, tenant_id: req.tenant_id };
 
   const response = await axios({
