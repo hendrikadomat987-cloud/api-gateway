@@ -8,10 +8,18 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:customers": "jest services/customers",
+    "test:appointments": "jest services/appointments",
     "test:requests": "jest services/requests",
     "test:resources": "jest services/resources",
     "test:scenarios": "jest scenarios",
     "test:ci": "jest --runInBand --forceExit",
+    "test:summary": "node run-summary.js",
+    "test:summary:customers": "node run-summary.js services/customers",
+    "test:summary:appointments": "node run-summary.js services/appointments",
+    "test:summary:requests": "node run-summary.js services/requests",
+    "test:summary:resources": "node run-summary.js services/resources",
+    "test:summary:scenarios": "node run-summary.js scenarios",
+    "test:debug": "jest --verbose --forceExit",
     "generate-token": "node generate-token.js"
   },
   "dependencies": {
