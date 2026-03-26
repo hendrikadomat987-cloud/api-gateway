@@ -7,20 +7,20 @@
 -- TABLE
 -- -----------------------------------------------------------------------------
 create table if not exists public.requests (
-  id          uuid        primary key default gen_random_uuid(),
-  tenant_id   uuid        not null,
-  customer_id uuid        not null,
-  type        text        not null,
-  status      text        not null default 'pending',
-  notes       text,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  id           uuid primary key default gen_random_uuid(),
+  tenant_id    uuid not null,
+  customer_id  uuid not null,
+  type         text not null,
+  status       text not null default 'pending',
+  notes        text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
 );
 
 -- Indexes
-create index if not exists idx_requests_tenant_id   on public.requests (tenant_id);
-create index if not exists idx_requests_customer_id on public.requests (tenant_id, customer_id);
-create index if not exists idx_requests_status      on public.requests (tenant_id, status);
+create index if not exists idx_requests_tenant_id    on public.requests (tenant_id);
+create index if not exists idx_requests_customer_id  on public.requests (tenant_id, customer_id);
+create index if not exists idx_requests_status       on public.requests (tenant_id, status);
 
 -- updated_at trigger
 create or replace function public.set_requests_updated_at()
@@ -42,6 +42,7 @@ create trigger trg_requests_updated_at
 alter table public.requests enable row level security;
 alter table public.requests force row level security;
 
+-- Drop existing policies before recreating
 drop policy if exists requests_tenant_isolation on public.requests;
 
 create policy requests_tenant_isolation on public.requests
@@ -61,9 +62,10 @@ create or replace function public.request_create(
 returns table (id uuid, tenant_id uuid, customer_id uuid, type text, status text, notes text, created_at timestamptz)
 language plpgsql security definer as $$
 declare
-  valid_types    text[] := array['callback','support','quote','info'];
+  valid_types   text[] := array['callback','support','quote','info'];
   valid_statuses text[] := array['pending','in_progress','resolved','closed'];
 begin
+  -- Enforce allowed type values
   if not (p_type = any(valid_types)) then
     raise exception 'INVALID_TYPE: type must be one of callback, support, quote, info';
   end if;
@@ -143,7 +145,6 @@ $$;
 
 -- -----------------------------------------------------------------------------
 -- RPC: request_update
--- Partial update — only provided fields are changed (coalesce pattern).
 -- -----------------------------------------------------------------------------
 create or replace function public.request_update(
   p_tenant_id uuid,
@@ -171,9 +172,9 @@ begin
   return query
     update public.requests as r
     set
-      type       = coalesce(p_type,   r.type),
-      status     = coalesce(p_status, r.status),
-      notes      = coalesce(p_notes,  r.notes),
+      type      = coalesce(p_type,   r.type),
+      status    = coalesce(p_status, r.status),
+      notes     = coalesce(p_notes,  r.notes),
       updated_at = now()
     where r.id = p_id
       and r.tenant_id = p_tenant_id
@@ -190,7 +191,7 @@ $$;
 
 -- -----------------------------------------------------------------------------
 -- RPC: request_delete
--- Idempotent: returns the requested id even when the row does not exist.
+-- Idempotent: returns id even when the row does not exist.
 -- -----------------------------------------------------------------------------
 create or replace function public.request_delete(
   p_tenant_id uuid,
@@ -208,6 +209,7 @@ begin
     and r.tenant_id = p_tenant_id
   returning r.id into v_deleted_id;
 
+  -- Idempotent: return the requested id regardless
   return coalesce(v_deleted_id, p_id);
 end;
 $$;
@@ -215,8 +217,8 @@ $$;
 -- -----------------------------------------------------------------------------
 -- Grants (adjust role names to match your Supabase setup)
 -- -----------------------------------------------------------------------------
-grant execute on function public.request_create     to authenticated, service_role;
-grant execute on function public.request_list       to authenticated, service_role;
-grant execute on function public.request_get_by_id to authenticated, service_role;
-grant execute on function public.request_update     to authenticated, service_role;
-grant execute on function public.request_delete     to authenticated, service_role;
+grant execute on function public.request_create      to authenticated, service_role;
+grant execute on function public.request_list        to authenticated, service_role;
+grant execute on function public.request_get_by_id  to authenticated, service_role;
+grant execute on function public.request_update      to authenticated, service_role;
+grant execute on function public.request_delete      to authenticated, service_role;

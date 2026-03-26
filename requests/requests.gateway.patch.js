@@ -7,162 +7,114 @@
  *
  * HOW TO APPLY
  * ─────────────
- * 1. Add the service entry to api-gateway/config.js → services:
+ * 1. Ensure this entry exists in api-gateway/config.js → services:
  *
- *      requests: 'requests_service',
+ *      requests: {
+ *        POST:      'requests/create',
+ *        GET:       'requests/list',
+ *        GET_ID:    'requests/get',
+ *        PUT_ID:    'requests/update',
+ *        DELETE_ID: 'requests/delete',
+ *      },
  *
- * 2. In api-gateway/src/routes/apiRouter.js, mount the tenant-injection
- *    middleware for this service (see tenantInjectionMiddleware below).
- *    Alternatively, apply it globally so all services benefit.
+ * 2. Ensure the POST and PUT validation blocks for "requests" are present
+ *    in api-gateway/src/routes/apiRouter.js (see VALIDATION BLOCKS below).
  *
- * 3. Ensure n8n webhook base paths match:
- *      POST   /webhook/requests/create
- *      GET    /webhook/requests/list
- *      GET    /webhook/requests/get    (with ?id=<uuid>)
- *      PUT    /webhook/requests/update (with ?id=<uuid>)
- *      DELETE /webhook/requests/delete (with ?id=<uuid>)
+ * 3. Restart / redeploy the API Gateway after applying changes.
  *
  * SECURITY CONTRACT
  * ─────────────────
  * - tenant_id is NEVER trusted from the client body.
  * - tenant_id is extracted exclusively from the verified JWT payload
  *   (req.jwtPayload.organization_id or req.jwtPayload.tenant_id).
- * - The gateway overwrites req.body.tenant_id before forwarding.
+ * - forwardRequest always overwrites req.body.tenant_id before forwarding.
  * - Any client-supplied tenant_id in the body is silently replaced.
  *
  * ROUTE MAPPING
  * ─────────────
- * Method   Gateway path               → n8n webhook path
- * POST     /api/v1/requests           → /webhook/requests/create
- * GET      /api/v1/requests           → /webhook/requests/list
- * GET      /api/v1/requests/:id       → /webhook/requests/get   (?id=:id)
- * PUT      /api/v1/requests/:id       → /webhook/requests/update (?id=:id)
- * DELETE   /api/v1/requests/:id       → /webhook/requests/delete (?id=:id)
+ * Method   Gateway path              → n8n webhook path
+ * POST     /api/v1/requests          → /webhook/requests/create
+ * GET      /api/v1/requests          → /webhook/requests/list
+ * GET      /api/v1/requests/:id      → /webhook/requests/get   (?id=:id)
+ * PUT      /api/v1/requests/:id      → /webhook/requests/update (?id=:id)
+ * DELETE   /api/v1/requests/:id      → /webhook/requests/delete (?id=:id)
  */
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// ─── Service registry entry ───────────────────────────────────────────────────
+// Add to api-gateway/config.js → services:
 
-// ─── Service configuration ────────────────────────────────────────────────────
-
-/**
- * Add this entry to api-gateway/config.js → services object.
- *
- * services: {
- *   customer:  'customer_service',
- *   requests:  'requests_service',   // ← ADD THIS
- * }
- */
 const SERVICE_REGISTRY_ENTRY = {
-  requests: 'requests_service',
+  requests: {
+    POST:      'requests/create',
+    GET:       'requests/list',
+    GET_ID:    'requests/get',
+    PUT_ID:    'requests/update',
+    DELETE_ID: 'requests/delete',
+  },
 };
 
-// ─── Tenant injection middleware ───────────────────────────────────────────────
-
-/**
- * Extracts tenant_id from the verified JWT and writes it into req.body,
- * overwriting any client-provided value.
- *
- * Apply this middleware BEFORE forwardRequest for all protected routes,
- * or mount it specifically on the requests router.
- *
- * The JWT must contain organization_id (preferred) or tenant_id.
- */
-function tenantInjectionMiddleware(req, res, next) {
-  const payload = req.jwtPayload;
-  if (!payload) {
-    return res.status(401).json({
-      success: false,
-      error: { code: 'MISSING_PAYLOAD', message: 'JWT payload is not available' },
-    });
-  }
-
-  const tenantId = payload.organization_id || payload.tenant_id || null;
-  if (!tenantId) {
-    return res.status(403).json({
-      success: false,
-      error: { code: 'MISSING_TENANT', message: 'JWT does not contain organization_id or tenant_id' },
-    });
-  }
-
-  // Overwrite — client body is never trusted
-  req.body = req.body || {};
-  req.body.tenant_id = tenantId;
-
-  next();
-}
-
-// ─── UUID validation middleware ────────────────────────────────────────────────
-
-/**
- * Validates :id path param as a UUID before forwarding.
- * Attach to all routes that accept an :id param.
- */
-function validateIdParam(req, res, next) {
-  const id = req.params.id;
-  if (id && !UUID_RE.test(id)) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_ID', message: 'id must be a valid UUID' },
-    });
-  }
-  next();
-}
-
-// ─── Route definitions ────────────────────────────────────────────────────────
-
-/**
- * Express router snippet for the requests service.
- *
- * Copy this into api-gateway/src/routes/apiRouter.js inside the
- * protectedRouter setup, or as a standalone router mounted at /api/v1.
- *
- * Assumes:
- *   - authenticate middleware already ran (req.jwtPayload is set)
- *   - forwardRequest(webhookPath, req, res) proxies to n8n
- */
+// ─── Validation blocks for apiRouter.js ──────────────────────────────────────
+// Insert these blocks in api-gateway/src/routes/apiRouter.js inside the
+// protectedRouter.all handler, after the appointments validation blocks.
 
 /*
-const express = require('express');
-const requestsRouter = express.Router();
 
-// Inject tenant from JWT on every requests route
-requestsRouter.use(tenantInjectionMiddleware);
+  // ── requests — POST validation ────────────────────────────────────────────
+  if (req.method === 'POST' && service === 'requests') {
+    const { customer_id, type, status, notes } = req.body || {};
+    req.body = {};
+    if (customer_id !== undefined) req.body.customer_id = typeof customer_id === 'string' ? customer_id.trim() : customer_id;
+    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (status      !== undefined) req.body.status      = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (notes       !== undefined) req.body.notes       = typeof notes === 'string' ? notes.trim() : notes;
 
-// POST /api/v1/requests  → create
-requestsRouter.post('/', (req, res) => {
-  forwardRequest('requests/create', req, res);
-});
+    if (!req.body.customer_id) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'customer_id is required' } });
+    }
+    const UUID_RE_LOCAL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE_LOCAL.test(req.body.customer_id)) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'customer_id must be a valid UUID' } });
+    }
 
-// GET /api/v1/requests  → list
-requestsRouter.get('/', (req, res) => {
-  forwardRequest('requests/list', req, res);
-});
+    const VALID_REQUEST_TYPES = ['callback', 'support', 'quote', 'info'];
+    if (!req.body.type) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'type is required' } });
+    }
+    if (!VALID_REQUEST_TYPES.includes(req.body.type)) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'type must be one of: callback, support, quote, info' } });
+    }
 
-// GET /api/v1/requests/:id  → get by id
-requestsRouter.get('/:id', validateIdParam, (req, res) => {
-  req.query.id = req.params.id;
-  forwardRequest('requests/get', req, res);
-});
+    const VALID_REQUEST_STATUSES = ['pending', 'in_progress', 'resolved', 'closed'];
+    if (req.body.status !== undefined && !VALID_REQUEST_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'status must be one of: pending, in_progress, resolved, closed' } });
+    }
+  }
 
-// PUT /api/v1/requests/:id  → update
-requestsRouter.put('/:id', validateIdParam, (req, res) => {
-  req.query.id = req.params.id;
-  forwardRequest('requests/update', req, res);
-});
+  // ── requests — PUT validation ─────────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'requests') {
+    const { type, status, notes } = req.body || {};
+    req.body = {};
+    if (type   !== undefined) req.body.type   = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (status !== undefined) req.body.status = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (notes  !== undefined) req.body.notes  = typeof notes === 'string' ? notes.trim() : notes;
 
-// DELETE /api/v1/requests/:id  → delete
-requestsRouter.delete('/:id', validateIdParam, (req, res) => {
-  req.query.id = req.params.id;
-  forwardRequest('requests/delete', req, res);
-});
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'At least one of type, status, or notes is required' } });
+    }
 
-module.exports = requestsRouter;
+    const VALID_REQUEST_TYPES = ['callback', 'support', 'quote', 'info'];
+    if (req.body.type !== undefined && !VALID_REQUEST_TYPES.includes(req.body.type)) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'type must be one of: callback, support, quote, info' } });
+    }
+
+    const VALID_REQUEST_STATUSES = ['pending', 'in_progress', 'resolved', 'closed'];
+    if (req.body.status !== undefined && !VALID_REQUEST_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'status must be one of: pending, in_progress, resolved, closed' } });
+    }
+  }
+
 */
 
-// ─── Exports (for testing / integration) ─────────────────────────────────────
+// ─── Exports ──────────────────────────────────────────────────────────────────
 
-module.exports = {
-  SERVICE_REGISTRY_ENTRY,
-  tenantInjectionMiddleware,
-  validateIdParam,
-};
+module.exports = { SERVICE_REGISTRY_ENTRY };

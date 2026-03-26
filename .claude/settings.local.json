@@ -24,7 +24,17 @@
       "Bash(node --check config.js)",
       "Bash(node --check src/routes/apiRouter.js)",
       "Bash(node --check src/services/serviceMap.js)",
-      "Bash(node --check src/utils/forwardRequest.js)"
+      "Bash(node --check src/utils/forwardRequest.js)",
+      "Bash(find C:/Users/hendr/claude-ai-voice-agent -name appointments*test* -o -name *test*appointments*)",
+      "Bash(node --check \"C:/Users/hendr/claude-ai-voice-agent/test-engine/tests/appointments/appointments.gateway-security.test.js\")",
+      "Bash(ls:*)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''$f'',''utf8''\\)\\); console.log\\(''OK: $f''\\)\")",
+      "Bash(done)",
+      "Bash(node -e \":*)",
+      "Bash(node -e \"const fs=require\\(''fs''\\);try{JSON.parse\\(fs.readFileSync\\(''_customer_get.json'',''utf8''\\)\\);console.log\\(''OK''\\)}catch\\(e\\){console.log\\(''FAIL:'',e.message\\)}\")",
+      "Bash(node -e \"const fs=require\\(''fs''\\);try{JSON.parse\\(fs.readFileSync\\(''_customer_create.json'',''utf8''\\)\\);console.log\\(''OK''\\)}catch\\(e\\){console.log\\(''FAIL:'',e.message\\)}\")"
     ]
   }
 }

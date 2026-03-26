@@ -7,7 +7,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "r3a00001-0003-0003-0003-000000000001",
+      "id": "c0030001-0000-0000-0000-000000000001",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -21,7 +21,7 @@
             {
               "id": "field-tenant-id",
               "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id }}",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
               "type": "string"
             },
             {
@@ -34,7 +34,7 @@
         },
         "options": {}
       },
-      "id": "r3a00002-0003-0003-0003-000000000002",
+      "id": "c0030002-0000-0000-0000-000000000002",
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -44,7 +44,7 @@
       "parameters": {
         "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\nconst errors = [];\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) errors.push('id is required');\nelse if (!UUID_RE.test(id)) errors.push('id must be a valid UUID');\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
       },
-      "id": "r3a00003-0003-0003-0003-000000000003",
+      "id": "c0030003-0000-0000-0000-000000000003",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -74,7 +74,7 @@
         },
         "options": {}
       },
-      "id": "r3a00004-0003-0003-0003-000000000004",
+      "id": "c0030004-0000-0000-0000-000000000004",
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -91,7 +91,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [-640, 160],
-      "id": "r3a00005-0003-0003-0003-000000000005",
+      "id": "c0030005-0000-0000-0000-000000000005",
       "name": "DB Get",
       "credentials": {
         "postgres": {
@@ -112,12 +112,11 @@
           "conditions": [
             {
               "id": "cond-empty",
-              "leftValue": "=={{ $input.all().length }}",
-              "rightValue": "0",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
               "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "type": "number",
+                "operation": "equals"
               }
             }
           ],
@@ -128,7 +127,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [-400, 160],
-      "id": "r3a00006-0003-0003-0003-000000000006",
+      "id": "c0030006-0000-0000-0000-000000000006",
       "name": "Request found?"
     },
     {
@@ -151,7 +150,7 @@
         },
         "options": {}
       },
-      "id": "r3a00007-0003-0003-0003-000000000007",
+      "id": "c0030007-0000-0000-0000-000000000007",
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -159,9 +158,11 @@
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: $json.success, data: $json.data } }}",
         "options": {}
       },
-      "id": "r3a00008-0003-0003-0003-000000000008",
+      "id": "c0030008-0000-0000-0000-000000000008",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -175,7 +176,7 @@
           "responseCode": 400
         }
       },
-      "id": "r3a00009-0003-0003-0003-000000000009",
+      "id": "c0030009-0000-0000-0000-000000000009",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -189,7 +190,7 @@
           "responseCode": 404
         }
       },
-      "id": "r3a00010-0003-0003-0003-000000000010",
+      "id": "c0030010-0000-0000-0000-000000000010",
       "name": "Respond Not Found",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -232,7 +233,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "r3000001-0000-0000-0000-000000000003",
+  "versionId": "c0030000-0000-0000-0000-000000000000",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"

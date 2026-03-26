@@ -1,32 +1,35 @@
 'use strict';
 
 /**
- * Requests — CRUD Test Suite
+ * Requests CRUD test suite
  *
  * Pattern: Arrange → Act → Assert → Cleanup
- * Shared ctx carries IDs across tests within the suite run.
+ * All tests share a mutable `ctx` object so IDs created early
+ * are available to later tests (read, update, delete).
  *
  * PRE-REQUISITE: SQL applied, workflows active, gateway deployed.
  */
 
-const { createSuite }  = require('../test-engine/core/testRunner');
-const { createClient } = require('../test-engine/core/apiClient');
+const { createSuite }  = require('../../core/testRunner');
+const { createClient } = require('../../core/apiClient');
 const {
   assertStatus,
   assertSuccess,
   assertError,
   assertSchema,
   assertField,
-} = require('../test-engine/core/assertions');
-const config = require('../test-engine/config');
+} = require('../../core/assertions');
+const config = require('../../config');
 
+// ── Clients ───────────────────────────────────────────────────────────────────
 const client            = createClient({ token: config.tokens.valid });
 const noAuthClient      = createClient({ token: '' });
 const invalidAuthClient = createClient({ token: config.tokens.invalid });
 const expiredAuthClient = createClient({ token: config.tokens.expired });
 const wrongTenantClient = createClient({ token: config.tokens.wrongTenant });
 
-const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000001';
+// ── Test data ─────────────────────────────────────────────────────────────────
+const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000001'; // must exist in DB for your tenant
 
 const VALID_REQUEST = {
   customer_id: VALID_CUSTOMER_ID,
@@ -43,25 +46,30 @@ const suite = createSuite('Requests CRUD');
 
 suite.test('Create request — success', async (ctx) => {
   const res = await client.post('/requests', VALID_REQUEST);
+
   assertStatus(res, 200);
   assertSuccess(res);
   assertSchema(res, ['id']);
+
   ctx.requestId = res.data.data.id;
 }, { critical: true });
 
-suite.test('List requests — success', async () => {
+suite.test('List requests — success', async (ctx) => {
   const res = await client.get('/requests');
+
   assertStatus(res, 200);
   assertSuccess(res);
+  // data must be an array
   const data = res.data.data;
   if (!Array.isArray(data)) {
-    const { fail } = require('../test-engine/core/assertions');
+    const { fail } = require('../../core/assertions');
     fail('Expected data to be an array for list response', { data });
   }
 });
 
 suite.test('Get request by ID — success', async (ctx) => {
   const res = await client.get(`/requests/${ctx.requestId}`);
+
   assertStatus(res, 200);
   assertSuccess(res);
   assertSchema(res, ['id', 'type', 'status']);
@@ -74,12 +82,16 @@ suite.test('Update request (full update) — success', async (ctx) => {
     status: 'in_progress',
     notes:  'Updated notes',
   });
+
   assertStatus(res, 200);
   assertSuccess(res);
 });
 
 suite.test('Update request (partial — status only) — success', async (ctx) => {
-  const res = await client.put(`/requests/${ctx.requestId}`, { status: 'resolved' });
+  const res = await client.put(`/requests/${ctx.requestId}`, {
+    status: 'resolved',
+  });
+
   assertStatus(res, 200);
   assertSuccess(res);
 });
@@ -88,38 +100,56 @@ suite.test('Update request (partial — status only) — success', async (ctx) =
 // VALIDATION ERROR CASES
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('POST — missing type → VALIDATION_ERROR', async () => {
-  const res = await client.post('/requests', { customer_id: VALID_CUSTOMER_ID });
+suite.test('POST request — missing type → VALIDATION_ERROR', async () => {
+  const res = await client.post('/requests', {
+    customer_id: VALID_CUSTOMER_ID,
+  });
+
   assertStatus(res, 400);
   assertError(res, 'VALIDATION_ERROR');
 });
 
-suite.test('POST — invalid type → VALIDATION_ERROR', async () => {
-  const res = await client.post('/requests', { customer_id: VALID_CUSTOMER_ID, type: 'unknown_type' });
+suite.test('POST request — invalid type → VALIDATION_ERROR', async () => {
+  const res = await client.post('/requests', {
+    customer_id: VALID_CUSTOMER_ID,
+    type:        'unknown_type',
+  });
+
   assertStatus(res, 400);
   assertError(res, 'VALIDATION_ERROR');
 });
 
-suite.test('POST — missing customer_id → VALIDATION_ERROR', async () => {
-  const res = await client.post('/requests', { type: 'support' });
+suite.test('POST request — missing customer_id → VALIDATION_ERROR', async () => {
+  const res = await client.post('/requests', {
+    type: 'support',
+  });
+
   assertStatus(res, 400);
   assertError(res, 'VALIDATION_ERROR');
 });
 
-suite.test('POST — invalid customer_id UUID → VALIDATION_ERROR', async () => {
-  const res = await client.post('/requests', { customer_id: 'not-a-uuid', type: 'support' });
+suite.test('POST request — invalid customer_id UUID → VALIDATION_ERROR', async () => {
+  const res = await client.post('/requests', {
+    customer_id: 'not-a-uuid',
+    type:        'support',
+  });
+
   assertStatus(res, 400);
   assertError(res, 'VALIDATION_ERROR');
 });
 
-suite.test('PUT — empty body → VALIDATION_ERROR', async (ctx) => {
+suite.test('PUT request — empty body → VALIDATION_ERROR', async (ctx) => {
   const res = await client.put(`/requests/${ctx.requestId}`, {});
+
   assertStatus(res, 400);
   assertError(res, 'VALIDATION_ERROR');
 });
 
-suite.test('PUT — invalid status → VALIDATION_ERROR', async (ctx) => {
-  const res = await client.put(`/requests/${ctx.requestId}`, { status: 'unknown_status' });
+suite.test('PUT request — invalid status → VALIDATION_ERROR', async (ctx) => {
+  const res = await client.put(`/requests/${ctx.requestId}`, {
+    status: 'unknown_status',
+  });
+
   assertStatus(res, 400);
   assertError(res, 'VALIDATION_ERROR');
 });
@@ -128,17 +158,17 @@ suite.test('PUT — invalid status → VALIDATION_ERROR', async (ctx) => {
 // AUTH TESTS
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('GET — missing token → 401', async (ctx) => {
+suite.test('GET request — missing token → 401', async (ctx) => {
   const res = await noAuthClient.get(`/requests/${ctx.requestId}`);
   assertStatus(res, 401);
 });
 
-suite.test('GET — invalid token → 401', async (ctx) => {
+suite.test('GET request — invalid token → 401', async (ctx) => {
   const res = await invalidAuthClient.get(`/requests/${ctx.requestId}`);
   assertStatus(res, 401);
 });
 
-suite.test('GET — expired token → 401', async (ctx) => {
+suite.test('GET request — expired token → 401', async (ctx) => {
   const res = await expiredAuthClient.get(`/requests/${ctx.requestId}`);
   assertStatus(res, 401);
 });
@@ -147,30 +177,38 @@ suite.test('GET — expired token → 401', async (ctx) => {
 // MULTI-TENANT SECURITY
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('GET — wrong tenant must not return data', async (ctx) => {
+suite.test('GET request — wrong tenant → must not return data', async (ctx) => {
   const res = await wrongTenantClient.get(`/requests/${ctx.requestId}`);
+
   if (res.status === 200 && res.data && res.data.success === true) {
-    const { fail } = require('../test-engine/core/assertions');
-    fail('Cross-tenant data leak detected', { requestId: ctx.requestId });
+    const { fail } = require('../../core/assertions');
+    fail('Cross-tenant data leak: wrong-tenant token received the resource', {
+      requestId: ctx.requestId,
+      status: res.status,
+    });
   }
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// EDGE CASES
+// DELETE EDGE CASES
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('DELETE — invalid UUID → INVALID_ID', async () => {
+suite.test('DELETE request — invalid UUID → INVALID_ID', async () => {
   const res = await client.delete('/requests/not-a-valid-uuid');
+
   assertStatus(res, 400);
   assertError(res, 'INVALID_ID');
 });
 
-suite.test('DELETE — already deleted → idempotent success', async () => {
-  const createRes = await client.post('/requests', { customer_id: VALID_CUSTOMER_ID, type: 'info' });
+suite.test('DELETE request — already deleted → idempotent success', async () => {
+  const createRes = await client.post('/requests', {
+    customer_id: VALID_CUSTOMER_ID,
+    type:        'info',
+  });
   assertStatus(createRes, 200);
   const tempId = createRes.data.data.id;
 
-  const first = await client.delete(`/requests/${tempId}`);
+  const first  = await client.delete(`/requests/${tempId}`);
   assertStatus(first, 200);
   assertSuccess(first);
 
@@ -180,21 +218,28 @@ suite.test('DELETE — already deleted → idempotent success', async () => {
   assertField(second, 'deleted', true);
 });
 
-suite.test('GET — invalid UUID → INVALID_ID', async () => {
+// ═════════════════════════════════════════════════════════════════════════════
+// GET EDGE CASES
+// ═════════════════════════════════════════════════════════════════════════════
+
+suite.test('GET request — invalid UUID → INVALID_ID', async () => {
   const res = await client.get('/requests/not-a-valid-uuid');
+
   assertStatus(res, 400);
   assertError(res, 'INVALID_ID');
 });
 
-suite.test('GET — non-existing UUID → 404 or empty', async () => {
-  const res = await client.get('/requests/00000000-0000-0000-0000-000000000000');
+suite.test('GET request — non-existing UUID → 404 or empty', async () => {
+  const NON_EXISTING = '00000000-0000-0000-0000-000000000000';
+  const res = await client.get(`/requests/${NON_EXISTING}`);
+
   if (res.status === 404) {
     assertError(res, 'NOT_FOUND');
   } else if (res.status === 200) {
     const data = res.data && res.data.data;
     if (data && data.id) {
-      const { fail } = require('../test-engine/core/assertions');
-      fail('Expected empty for non-existing UUID but got a record', { data });
+      const { fail } = require('../../core/assertions');
+      fail('Expected empty/null for non-existing UUID but got a record', { data });
     }
   } else {
     assertStatus(res, 404);
@@ -211,15 +256,19 @@ suite.test('Security — tenant_id in body must be ignored', async (ctx) => {
     type:        'support',
     tenant_id:   'evil-tenant-id-99999',
   });
+
   if (res.status === 200) {
     assertSuccess(res);
     ctx.tenantInjectionId = res.data.data.id;
+
     const readRes = await client.get(`/requests/${ctx.tenantInjectionId}`);
     assertStatus(readRes, 200);
     const returnedData = readRes.data.data;
     if (returnedData && returnedData.tenant_id === 'evil-tenant-id-99999') {
-      const { fail } = require('../test-engine/core/assertions');
-      fail('Tenant injection succeeded', { returned_tenant_id: returnedData.tenant_id });
+      const { fail } = require('../../core/assertions');
+      fail('Tenant injection succeeded — spoofed tenant_id was persisted', {
+        returned_tenant_id: returnedData.tenant_id,
+      });
     }
   }
 });
@@ -229,36 +278,50 @@ suite.test('Security — extra body fields must not be persisted', async (ctx) =
     customer_id:   VALID_CUSTOMER_ID,
     type:          'quote',
     role:          'admin',
-    injectedField: 'INJECTED',
+    injectedField: 'INJECTED_VALUE',
   });
+
   if (res.status === 200) {
     assertSuccess(res);
     ctx.bodyInjectionId = res.data.data.id;
+
     const readRes = await client.get(`/requests/${ctx.bodyInjectionId}`);
     assertStatus(readRes, 200);
     const data = readRes.data.data;
-    const injected = ['role', 'injectedField'].filter((f) => f in data);
-    if (injected.length > 0) {
-      const { fail } = require('../test-engine/core/assertions');
-      fail('Unexpected fields persisted', { injected, data });
+    const injectedFields = ['role', 'injectedField'].filter((f) => f in data);
+    if (injectedFields.length > 0) {
+      const { fail } = require('../../core/assertions');
+      fail('Unexpected fields were persisted in the request record', {
+        injectedFields,
+        returnedData: data,
+      });
     }
   }
 });
 
-suite.test('Security — wrong-tenant must not update request', async (ctx) => {
-  const res = await wrongTenantClient.put(`/requests/${ctx.requestId}`, { status: 'closed' });
+suite.test('Security — cross-tenant: wrong-tenant must not update request', async (ctx) => {
+  const res = await wrongTenantClient.put(`/requests/${ctx.requestId}`, {
+    status: 'closed',
+  });
+
   if (res.status === 200 && res.data && res.data.success === true) {
-    const { fail } = require('../test-engine/core/assertions');
-    fail('Cross-tenant write violation', { requestId: ctx.requestId });
+    const { fail } = require('../../core/assertions');
+    fail('Cross-tenant write violation: wrong-tenant token updated the request', {
+      requestId: ctx.requestId,
+    });
   }
 });
 
-suite.test('Security — wrong-tenant must not delete request', async (ctx) => {
+suite.test('Security — cross-tenant: wrong-tenant must not delete request', async (ctx) => {
   const res = await wrongTenantClient.delete(`/requests/${ctx.requestId}`);
+
   if (res.status === 200 && res.data && res.data.success === true) {
-    const { fail } = require('../test-engine/core/assertions');
-    fail('Cross-tenant delete violation', { requestId: ctx.requestId });
+    const { fail } = require('../../core/assertions');
+    fail('Cross-tenant delete violation: wrong-tenant token deleted the request', {
+      requestId: ctx.requestId,
+    });
   }
+
   if (res.status !== 200) {
     const verifyRes = await client.get(`/requests/${ctx.requestId}`);
     assertStatus(verifyRes, 200);
@@ -270,19 +333,21 @@ suite.test('Security — wrong-tenant must not delete request', async (ctx) => {
 // CLEANUP
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('Cleanup — tenant-injection record', async (ctx) => {
+suite.test('Cleanup — tenant-injection request', async (ctx) => {
   if (!ctx.tenantInjectionId) return;
   await client.delete(`/requests/${ctx.tenantInjectionId}`);
 });
 
-suite.test('Cleanup — body-injection record', async (ctx) => {
+suite.test('Cleanup — body-injection request', async (ctx) => {
   if (!ctx.bodyInjectionId) return;
   await client.delete(`/requests/${ctx.bodyInjectionId}`);
 });
 
 suite.test('Delete request — cleanup', async (ctx) => {
   if (!ctx.requestId) return;
+
   const res = await client.delete(`/requests/${ctx.requestId}`);
+
   assertStatus(res, 200);
   assertSuccess(res);
 });

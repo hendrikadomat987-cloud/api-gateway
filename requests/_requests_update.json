@@ -8,7 +8,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "r4a00001-0004-0004-0004-000000000001",
+      "id": "c0040001-0000-0000-0000-000000000001",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -22,7 +22,7 @@
             {
               "id": "field-tenant-id",
               "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id }}",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
               "type": "string"
             },
             {
@@ -53,7 +53,7 @@
         },
         "options": {}
       },
-      "id": "r4a00002-0004-0004-0004-000000000002",
+      "id": "c0040002-0000-0000-0000-000000000002",
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -63,7 +63,7 @@
       "parameters": {
         "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\nconst type = $json.type ? ($json.type + '').trim().toLowerCase() : null;\nconst status = $json.status ? ($json.status + '').trim().toLowerCase() : null;\nconst notes = $json.notes ? ($json.notes + '').trim() : null;\n\nconst errors = [];\nlet errorCode = 'VALIDATION_ERROR';\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_TYPES = ['callback','support','quote','info'];\nconst VALID_STATUSES = ['pending','in_progress','resolved','closed'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) {\n  errors.push('id is required');\n  errorCode = 'MISSING_ID';\n} else if (!UUID_RE.test(id)) {\n  errors.push('id must be a valid UUID');\n  errorCode = 'INVALID_ID';\n}\n\nif (type === null && status === null && notes === null) {\n  errors.push('at least one of type, status, or notes is required');\n}\n\nif (type !== null && !VALID_TYPES.includes(type)) {\n  errors.push('type must be one of: callback, support, quote, info');\n}\n\nif (status !== null && !VALID_STATUSES.includes(status)) {\n  errors.push('status must be one of: pending, in_progress, resolved, closed');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errorCode: errors.length > 0 ? errorCode : null,\n    errors,\n    tenant_id,\n    id,\n    type,\n    status,\n    notes\n  }\n}];"
       },
-      "id": "r4a00003-0004-0004-0004-000000000003",
+      "id": "c0040003-0000-0000-0000-000000000003",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -93,7 +93,7 @@
         },
         "options": {}
       },
-      "id": "r4a00004-0004-0004-0004-000000000004",
+      "id": "c0040004-0000-0000-0000-000000000004",
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -137,7 +137,7 @@
         },
         "options": {}
       },
-      "id": "r4a00005-0004-0004-0004-000000000005",
+      "id": "c0040005-0000-0000-0000-000000000005",
       "name": "Normalize Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -154,7 +154,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [-592, 64],
-      "id": "r4a00006-0004-0004-0004-000000000006",
+      "id": "c0040006-0000-0000-0000-000000000006",
       "name": "DB UPDATE",
       "credentials": {
         "postgres": {
@@ -191,7 +191,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [-368, 64],
-      "id": "r4a00007-0004-0004-0004-000000000007",
+      "id": "c0040007-0000-0000-0000-000000000007",
       "name": "Rows Affected?"
     },
     {
@@ -214,7 +214,7 @@
         },
         "options": {}
       },
-      "id": "r4a00008-0004-0004-0004-000000000008",
+      "id": "c0040008-0000-0000-0000-000000000008",
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -226,7 +226,7 @@
         "responseBody": "={{ { success: true, data: { id: $json.id, updated: $json.updated } } }}",
         "options": {}
       },
-      "id": "r4a00009-0004-0004-0004-000000000009",
+      "id": "c0040009-0000-0000-0000-000000000009",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -240,7 +240,7 @@
           "responseCode": 400
         }
       },
-      "id": "r4a00010-0004-0004-0004-000000000010",
+      "id": "c0040010-0000-0000-0000-000000000010",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -254,7 +254,7 @@
           "responseCode": 404
         }
       },
-      "id": "r4a00011-0004-0004-0004-000000000011",
+      "id": "c0040011-0000-0000-0000-000000000011",
       "name": "Respond Not Found",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -300,7 +300,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "r4000001-0000-0000-0000-000000000004",
+  "versionId": "c0040000-0000-0000-0000-000000000000",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"

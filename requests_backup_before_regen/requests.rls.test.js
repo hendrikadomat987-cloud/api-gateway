@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Appointments — Row-Level Security (RLS) Test Suite
+ * Requests — Row-Level Security (RLS) Test Suite
  *
  * Verifies that PostgreSQL RLS policies prevent cross-tenant data access
  * even when requests bypass the gateway and hit the DB layer directly.
@@ -10,7 +10,7 @@
  * end-to-end RLS enforcement. They do NOT connect to PostgreSQL directly.
  *
  * Test strategy:
- * - Tenant A creates records via /appointments
+ * - Tenant A creates records via /requests
  * - Tenant B (wrongTenantClient) attempts to read / modify / delete them
  * - Every cross-tenant attempt must result in 401, 403, 404, or an empty result
  * - A 200 response containing Tenant A's data is a RLS violation
@@ -30,54 +30,53 @@ const tenantA = createClient({ token: config.tokens.valid });
 const tenantB = createClient({ token: config.tokens.wrongTenant });
 
 const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000001';
-const FUTURE_DATETIME   = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-const suite = createSuite('Appointments — RLS');
+const suite = createSuite('Requests — RLS');
 
 // ═════════════════════════════════════════════════════════════════════════════
 // SETUP — Tenant A creates a record
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('Setup — Tenant A creates an appointment', async (ctx) => {
-  const res = await tenantA.post('/appointments', {
-    customer_id:      VALID_CUSTOMER_ID,
-    scheduled_at:     FUTURE_DATETIME,
-    duration_minutes: 45,
-    status:           'scheduled',
-    notes:            'RLS test record',
+suite.test('Setup — Tenant A creates a request', async (ctx) => {
+  const res = await tenantA.post('/requests', {
+    customer_id: VALID_CUSTOMER_ID,
+    type:        'support',
+    status:      'pending',
+    notes:       'RLS test record',
   });
 
   assertStatus(res, 200);
   assertSuccess(res);
 
-  ctx.rlsAppointmentId = res.data.data.id;
+  ctx.rlsRequestId = res.data.data.id;
 }, { critical: true });
 
 // ═════════════════════════════════════════════════════════════════════════════
 // RLS: Cross-tenant GET
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('RLS — Tenant B cannot read Tenant A appointment by ID', async (ctx) => {
-  const res = await tenantB.get(`/appointments/${ctx.rlsAppointmentId}`);
+suite.test('RLS — Tenant B cannot read Tenant A request by ID', async (ctx) => {
+  const res = await tenantB.get(`/requests/${ctx.rlsRequestId}`);
 
   if (res.status === 200 && res.data && res.data.success === true && res.data.data && res.data.data.id) {
     const { fail } = require('../../test-engine/core/assertions');
-    fail('RLS VIOLATION: Tenant B retrieved Tenant A appointment', {
-      rlsAppointmentId: ctx.rlsAppointmentId,
-      returnedId:       res.data.data.id,
+    fail('RLS VIOLATION: Tenant B retrieved Tenant A request', {
+      rlsRequestId: ctx.rlsRequestId,
+      returnedId:   res.data.data.id,
     });
   }
+  // 401, 403, 404 are all valid RLS-enforced outcomes
 });
 
 suite.test('RLS — Tenant B list does not include Tenant A records', async (ctx) => {
-  const res = await tenantB.get('/appointments');
+  const res = await tenantB.get('/requests');
 
   if (res.status === 200 && res.data && Array.isArray(res.data.data)) {
-    const leaked = res.data.data.find((a) => a.id === ctx.rlsAppointmentId);
+    const leaked = res.data.data.find((r) => r.id === ctx.rlsRequestId);
     if (leaked) {
       const { fail } = require('../../test-engine/core/assertions');
-      fail('RLS VIOLATION: Tenant B list contains Tenant A appointment', {
-        rlsAppointmentId: ctx.rlsAppointmentId,
+      fail('RLS VIOLATION: Tenant B list contains Tenant A request', {
+        rlsRequestId: ctx.rlsRequestId,
         leaked,
       });
     }
@@ -88,27 +87,27 @@ suite.test('RLS — Tenant B list does not include Tenant A records', async (ctx
 // RLS: Cross-tenant UPDATE
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('RLS — Tenant B cannot update Tenant A appointment', async (ctx) => {
-  const res = await tenantB.put(`/appointments/${ctx.rlsAppointmentId}`, {
-    status: 'cancelled',
+suite.test('RLS — Tenant B cannot update Tenant A request', async (ctx) => {
+  const res = await tenantB.put(`/requests/${ctx.rlsRequestId}`, {
+    status: 'closed',
   });
 
   if (res.status === 200 && res.data && res.data.success === true) {
     const { fail } = require('../../test-engine/core/assertions');
-    fail('RLS VIOLATION: Tenant B updated Tenant A appointment', {
-      rlsAppointmentId: ctx.rlsAppointmentId,
+    fail('RLS VIOLATION: Tenant B updated Tenant A request', {
+      rlsRequestId: ctx.rlsRequestId,
     });
   }
 
   // Confirm Tenant A record is unchanged
-  const verifyRes = await tenantA.get(`/appointments/${ctx.rlsAppointmentId}`);
+  const verifyRes = await tenantA.get(`/requests/${ctx.rlsRequestId}`);
   if (verifyRes.status === 200 && verifyRes.data && verifyRes.data.data) {
-    const a = verifyRes.data.data;
-    if (a.status === 'cancelled') {
+    const r = verifyRes.data.data;
+    if (r.status === 'closed') {
       const { fail } = require('../../test-engine/core/assertions');
-      fail('RLS VIOLATION: Tenant A appointment status was changed by Tenant B', {
-        rlsAppointmentId: ctx.rlsAppointmentId,
-        status:           a.status,
+      fail('RLS VIOLATION: Tenant A record status was changed by Tenant B', {
+        rlsRequestId: ctx.rlsRequestId,
+        status:       r.status,
       });
     }
   }
@@ -118,19 +117,20 @@ suite.test('RLS — Tenant B cannot update Tenant A appointment', async (ctx) =>
 // RLS: Cross-tenant DELETE
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('RLS — Tenant B cannot delete Tenant A appointment', async (ctx) => {
-  const res = await tenantB.delete(`/appointments/${ctx.rlsAppointmentId}`);
+suite.test('RLS — Tenant B cannot delete Tenant A request', async (ctx) => {
+  const res = await tenantB.delete(`/requests/${ctx.rlsRequestId}`);
 
   if (res.status === 200 && res.data && res.data.success === true) {
     // Idempotent delete returns success — confirm record still exists for Tenant A
-    const verifyRes = await tenantA.get(`/appointments/${ctx.rlsAppointmentId}`);
+    const verifyRes = await tenantA.get(`/requests/${ctx.rlsRequestId}`);
     if (verifyRes.status !== 200 || !verifyRes.data || !verifyRes.data.data || !verifyRes.data.data.id) {
       const { fail } = require('../../test-engine/core/assertions');
-      fail('RLS VIOLATION: Tenant B deleted Tenant A appointment — record no longer accessible', {
-        rlsAppointmentId: ctx.rlsAppointmentId,
+      fail('RLS VIOLATION: Tenant B deleted Tenant A request — record no longer accessible', {
+        rlsRequestId: ctx.rlsRequestId,
       });
     }
   }
+  // 401, 403, 404 are all valid RLS-enforced outcomes
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -138,16 +138,16 @@ suite.test('RLS — Tenant B cannot delete Tenant A appointment', async (ctx) =>
 // ═════════════════════════════════════════════════════════════════════════════
 
 suite.test('RLS — Tenant A record is intact after all cross-tenant attempts', async (ctx) => {
-  const res = await tenantA.get(`/appointments/${ctx.rlsAppointmentId}`);
+  const res = await tenantA.get(`/requests/${ctx.rlsRequestId}`);
 
   assertStatus(res, 200);
   assertSuccess(res);
 
   const data = res.data.data;
-  if (!data || data.id !== ctx.rlsAppointmentId) {
+  if (!data || data.id !== ctx.rlsRequestId) {
     const { fail } = require('../../test-engine/core/assertions');
-    fail('Tenant A appointment was tampered with or deleted during RLS tests', {
-      rlsAppointmentId: ctx.rlsAppointmentId,
+    fail('Tenant A request was tampered with or deleted during RLS tests', {
+      rlsRequestId: ctx.rlsRequestId,
       data,
     });
   }
@@ -157,10 +157,10 @@ suite.test('RLS — Tenant A record is intact after all cross-tenant attempts', 
 // CLEANUP
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('Cleanup — RLS test appointment', async (ctx) => {
-  if (!ctx.rlsAppointmentId) return;
+suite.test('Cleanup — RLS test request', async (ctx) => {
+  if (!ctx.rlsRequestId) return;
 
-  const res = await tenantA.delete(`/appointments/${ctx.rlsAppointmentId}`);
+  const res = await tenantA.delete(`/requests/${ctx.rlsRequestId}`);
   assertStatus(res, 200);
   assertSuccess(res);
 });

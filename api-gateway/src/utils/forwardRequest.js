@@ -46,6 +46,10 @@ async function forwardRequest({ req, targetUrl, extraMeta = {} }) {
     forwardHeaders['X-User-Roles'] = JSON.stringify(req.jwtPayload.roles || []);
   }
 
+  // Inject tenant header — authoritative source is req.tenant_id (set by tenantContext
+  // from JWT organization_id). n8n workflows read exclusively from this header.
+  forwardHeaders['x-tenant-id'] = req.tenant_id;
+
   // Append query string and optional :id to meta
   const meta = { ...extraMeta, query: req.query };
   forwardHeaders['X-Gateway-Meta'] = JSON.stringify(meta);
@@ -81,7 +85,10 @@ async function forwardRequest({ req, targetUrl, extraMeta = {} }) {
     throw Object.assign(new Error('Tenant context missing'), { statusCode: 500, code: 'MISSING_TENANT' });
   }
 
-  const safeBody = { ...req.body, tenant_id: req.tenant_id };
+  // Never carry tenant_id in the body — it is delivered exclusively via the
+  // x-tenant-id header (set above). Keeping it out of the body prevents any
+  // downstream service from accidentally trusting a client-supplied value.
+  const { tenant_id: _strip, ...safeBody } = { ...req.body };
 
   const response = await axios({
     method:  req.method,

@@ -61,6 +61,20 @@ const config = {
       PUT_ID:    'appointments/update',   // PUT    /api/v1/appointments/:id
       DELETE_ID: 'appointments/delete',   // DELETE /api/v1/appointments/:id
     },
+    requests: {
+      POST:      'requests/create',       // POST   /api/v1/requests
+      GET:       'requests/list',         // GET    /api/v1/requests
+      GET_ID:    'requests/get',          // GET    /api/v1/requests/:id
+      PUT_ID:    'requests/update',       // PUT    /api/v1/requests/:id
+      DELETE_ID: 'requests/delete',       // DELETE /api/v1/requests/:id
+    },
+    resources: {
+      POST:      'resources/create',      // POST   /api/v1/resources
+      GET:       'resources/list',        // GET    /api/v1/resources
+      GET_ID:    'resources/get',         // GET    /api/v1/resources/:id
+      PUT_ID:    'resources/update',      // PUT    /api/v1/resources/:id
+      DELETE_ID: 'resources/delete',      // DELETE /api/v1/resources/:id
+    },
     appointment:  'appointment_service',   // legacy — preserved for backward compatibility
     availability: 'availability_service',
     request:      'request_service',

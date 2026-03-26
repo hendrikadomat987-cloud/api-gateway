@@ -1,19 +1,19 @@
 {
-  "name": "/appointments/create",
+  "name": "/resources/create",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "appointments/create",
+        "path": "resources/create",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "a1b00001-0001-0001-0001-000000000001",
+      "id": "d0010001-0000-0000-0000-000000000001",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [-1600, 240],
-      "webhookId": "appointments-create-webhook-001"
+      "webhookId": "resources-create-webhook-001"
     },
     {
       "parameters": {
@@ -26,40 +26,34 @@
               "type": "string"
             },
             {
-              "id": "field-customer-id",
-              "name": "customer_id",
-              "value": "={{ $json.body.customer_id ?? '' }}",
+              "id": "field-name",
+              "name": "name",
+              "value": "={{ $json.body.name ?? '' }}",
               "type": "string"
             },
             {
-              "id": "field-scheduled-at",
-              "name": "scheduled_at",
-              "value": "={{ $json.body.scheduled_at ?? '' }}",
+              "id": "field-type",
+              "name": "type",
+              "value": "={{ $json.body.type ?? '' }}",
               "type": "string"
             },
             {
-              "id": "field-duration-minutes",
-              "name": "duration_minutes",
-              "value": "={{ $json.body.duration_minutes ?? 60 }}",
-              "type": "number"
+              "id": "field-content",
+              "name": "content",
+              "value": "={{ $json.body.content ?? null }}",
+              "type": "string"
             },
             {
               "id": "field-status",
               "name": "status",
-              "value": "={{ $json.body.status ?? 'scheduled' }}",
-              "type": "string"
-            },
-            {
-              "id": "field-notes",
-              "name": "notes",
-              "value": "={{ $json.body.notes ?? null }}",
+              "value": "={{ $json.body.status ?? 'active' }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "a1b00002-0001-0001-0001-000000000002",
+      "id": "d0010002-0000-0000-0000-000000000002",
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -67,9 +61,9 @@
     },
     {
       "parameters": {
-        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst customer_id = ($json.customer_id || '').trim();\nconst scheduled_at = ($json.scheduled_at || '').trim();\nconst duration_minutes = parseInt($json.duration_minutes, 10) || 60;\nconst status = ($json.status || 'scheduled').trim().toLowerCase();\nconst notes = $json.notes ? ($json.notes + '').trim() : null;\n\nconst errors = [];\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_STATUSES = ['scheduled','confirmed','cancelled','completed'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!customer_id) errors.push('customer_id is required');\nelse if (!UUID_RE.test(customer_id)) errors.push('customer_id must be a valid UUID');\n\nif (!scheduled_at) {\n  errors.push('scheduled_at is required');\n} else {\n  const d = new Date(scheduled_at);\n  if (isNaN(d.getTime())) errors.push('scheduled_at must be a valid ISO 8601 timestamp');\n}\n\nif (!Number.isInteger(duration_minutes) || duration_minutes < 1 || duration_minutes > 1440) {\n  errors.push('duration_minutes must be an integer between 1 and 1440');\n}\n\nif (!VALID_STATUSES.includes(status)) {\n  errors.push('status must be one of: scheduled, confirmed, cancelled, completed');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    customer_id,\n    scheduled_at,\n    duration_minutes,\n    status,\n    notes\n  }\n}];"
+        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst name = ($json.name || '').trim();\nconst type = ($json.type || '').trim().toLowerCase();\nconst content = $json.content ? ($json.content + '').trim() : null;\nconst status = ($json.status || 'active').trim().toLowerCase();\n\nconst errors = [];\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_TYPES = ['document','template','script','faq'];\nconst VALID_STATUSES = ['active','draft','archived'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!name) errors.push('name is required');\n\nif (!type) errors.push('type is required');\nelse if (!VALID_TYPES.includes(type)) errors.push('type must be one of: document, template, script, faq');\n\nif (!VALID_STATUSES.includes(status)) errors.push('status must be one of: active, draft, archived');\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    name,\n    type,\n    content,\n    status\n  }\n}];"
       },
-      "id": "a1b00003-0001-0001-0001-000000000003",
+      "id": "d0010003-0000-0000-0000-000000000003",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -99,7 +93,7 @@
         },
         "options": {}
       },
-      "id": "a1b00004-0001-0001-0001-000000000004",
+      "id": "d0010004-0000-0000-0000-000000000004",
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -108,15 +102,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "select * from public.appointment_create($1, $2, $3, $4, $5, $6);",
+        "query": "select * from public.resource_create($1, $2, $3, $4, $5);",
         "options": {
-          "queryReplacement": "={{ [$json.tenant_id, $json.customer_id, $json.scheduled_at, $json.duration_minutes, $json.status, $json.notes] }}"
+          "queryReplacement": "={{ [$json.tenant_id, $json.name, $json.type, $json.content, $json.status] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [-720, 160],
-      "id": "a1b00005-0001-0001-0001-000000000005",
+      "id": "d0010005-0000-0000-0000-000000000005",
       "name": "DB Insert",
       "credentials": {
         "postgres": {
@@ -151,7 +145,7 @@
         },
         "options": {}
       },
-      "id": "a1b00006-0001-0001-0001-000000000006",
+      "id": "d0010006-0000-0000-0000-000000000006",
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -163,7 +157,7 @@
         "responseBody": "={{ { success: true, data: { id: $json.id, tenant_id: $json.tenant_id } } }}",
         "options": {}
       },
-      "id": "a1b00007-0001-0001-0001-000000000007",
+      "id": "d0010007-0000-0000-0000-000000000007",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -177,7 +171,7 @@
           "responseCode": 400
         }
       },
-      "id": "a1b00008-0001-0001-0001-000000000008",
+      "id": "d0010008-0000-0000-0000-000000000008",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -214,18 +208,18 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "a1000001-0000-0000-0000-000000000001",
+  "versionId": "d0010000-0000-0000-0000-000000000000",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
   },
-  "id": "AppointmentsCreateWorkflow01",
+  "id": "ResourcesCreateWorkflow01",
   "tags": [
     {
       "updatedAt": "2026-03-26T00:00:00.000Z",
       "createdAt": "2026-03-26T00:00:00.000Z",
-      "id": "appointments-service-tag",
-      "name": "appointments-service"
+      "id": "resources-service-tag",
+      "name": "resources-service"
     }
   ]
 }

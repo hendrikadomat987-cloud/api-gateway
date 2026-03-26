@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Requests — Gateway Security Test Suite
+ * Resources — Gateway Security Test Suite
  *
  * Tests that the API Gateway correctly enforces:
  * - JWT authentication
@@ -28,29 +28,28 @@ const invalidAuthClient = createClient({ token: config.tokens.invalid });
 const expiredAuthClient = createClient({ token: config.tokens.expired });
 const wrongTenantClient = createClient({ token: config.tokens.wrongTenant });
 
-const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000001';
-const VALID_UUID        = '00000000-0000-0000-0000-000000000099';
+const VALID_UUID = '00000000-0000-0000-0000-000000000099';
 
-const suite = createSuite('Requests — Gateway Security');
+const suite = createSuite('Resources — Gateway Security');
 
 // ═════════════════════════════════════════════════════════════════════════════
 // JWT ENFORCEMENT
 // ═════════════════════════════════════════════════════════════════════════════
 
 suite.test('No Authorization header → 401 MISSING_TOKEN', async () => {
-  const res = await noAuthClient.post('/requests', { customer_id: VALID_CUSTOMER_ID, type: 'support' });
+  const res = await noAuthClient.post('/resources', { name: 'Test', type: 'faq' });
   assertStatus(res, 401);
   assertError(res, 'MISSING_TOKEN');
 });
 
 suite.test('Invalid JWT signature → 401 INVALID_TOKEN', async () => {
-  const res = await invalidAuthClient.get('/requests');
+  const res = await invalidAuthClient.get('/resources');
   assertStatus(res, 401);
   assertError(res, 'INVALID_TOKEN');
 });
 
 suite.test('Expired JWT → 401 TOKEN_EXPIRED or INVALID_TOKEN', async () => {
-  const res = await expiredAuthClient.get('/requests');
+  const res = await expiredAuthClient.get('/resources');
   assertStatus(res, 401);
   const code = res.data && res.data.error && res.data.error.code;
   if (code !== 'TOKEN_EXPIRED' && code !== 'INVALID_TOKEN') {
@@ -62,26 +61,26 @@ suite.test('Expired JWT → 401 TOKEN_EXPIRED or INVALID_TOKEN', async () => {
 // UUID PATH PARAM VALIDATION
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('GET /requests/not-a-uuid → 400 INVALID_ID', async () => {
-  const res = await client.get('/requests/not-a-uuid');
+suite.test('GET /resources/not-a-uuid → 400 INVALID_ID', async () => {
+  const res = await client.get('/resources/not-a-uuid');
   assertStatus(res, 400);
   assertError(res, 'INVALID_ID');
 });
 
-suite.test('PUT /requests/not-a-uuid → 400 INVALID_ID', async () => {
-  const res = await client.put('/requests/not-a-uuid', { status: 'closed' });
+suite.test('PUT /resources/not-a-uuid → 400 INVALID_ID', async () => {
+  const res = await client.put('/resources/not-a-uuid', { status: 'archived' });
   assertStatus(res, 400);
   assertError(res, 'INVALID_ID');
 });
 
-suite.test('DELETE /requests/not-a-uuid → 400 INVALID_ID', async () => {
-  const res = await client.delete('/requests/not-a-uuid');
+suite.test('DELETE /resources/not-a-uuid → 400 INVALID_ID', async () => {
+  const res = await client.delete('/resources/not-a-uuid');
   assertStatus(res, 400);
   assertError(res, 'INVALID_ID');
 });
 
-suite.test('GET /requests/totally-invalid-format → 400 INVALID_ID', async () => {
-  const res = await client.get('/requests/totally-invalid-format');
+suite.test('GET /resources/totally-invalid-format → 400 INVALID_ID', async () => {
+  const res = await client.get('/resources/totally-invalid-format');
   assertStatus(res, 400);
   assertError(res, 'INVALID_ID');
 });
@@ -90,24 +89,24 @@ suite.test('GET /requests/totally-invalid-format → 400 INVALID_ID', async () =
 // ROUTING SECURITY
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('PUT /requests without ID → must fail (400/404/405)', async () => {
-  const res = await client.put('/requests', { status: 'closed' });
+suite.test('PUT /resources without ID → must fail (400/404/405)', async () => {
+  const res = await client.put('/resources', { status: 'archived' });
   if (res.status === 200) {
     const { fail } = require('../test-engine/core/assertions');
-    fail('Expected PUT /requests without ID to fail but got 200', { body: res.data });
+    fail('Expected PUT /resources without ID to fail but got 200', { body: res.data });
   }
 });
 
-suite.test('DELETE /requests without ID → must fail (400/404/405)', async () => {
-  const res = await client.delete('/requests');
+suite.test('DELETE /resources without ID → must fail (400/404/405)', async () => {
+  const res = await client.delete('/resources');
   if (res.status === 200) {
     const { fail } = require('../test-engine/core/assertions');
-    fail('Expected DELETE /requests without ID to fail but got 200', { body: res.data });
+    fail('Expected DELETE /resources without ID to fail but got 200', { body: res.data });
   }
 });
 
 suite.test('Query-param id must not bypass path param routing', async () => {
-  const res = await client.get(`/requests?id=${VALID_UUID}`);
+  const res = await client.get(`/resources?id=${VALID_UUID}`);
   if (
     res.status === 200 &&
     res.data &&
@@ -125,15 +124,15 @@ suite.test('Query-param id must not bypass path param routing', async () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 suite.test('tenant_id in POST body must be overwritten by JWT tenant', async (ctx) => {
-  const res = await client.post('/requests', {
-    customer_id: VALID_CUSTOMER_ID,
-    type:        'support',
-    tenant_id:   'evil-tenant-00000000-0000-0000-0000-000000000000',
+  const res = await client.post('/resources', {
+    name:      'Injection Test',
+    type:      'faq',
+    tenant_id: 'evil-tenant-00000000-0000-0000-0000-000000000000',
   });
   if (res.status === 200) {
     assertSuccess(res);
     ctx.injectedId = res.data.data.id;
-    const readRes = await client.get(`/requests/${ctx.injectedId}`);
+    const readRes = await client.get(`/resources/${ctx.injectedId}`);
     assertStatus(readRes, 200);
     assertSuccess(readRes);
     const data = readRes.data.data;
@@ -148,8 +147,8 @@ suite.test('tenant_id in POST body must be overwritten by JWT tenant', async (ct
 // CROSS-TENANT
 // ═════════════════════════════════════════════════════════════════════════════
 
-suite.test('Wrong-tenant token must not list another tenant requests', async () => {
-  const res = await wrongTenantClient.get('/requests');
+suite.test('Wrong-tenant token must not list another tenant resources', async () => {
+  const res = await wrongTenantClient.get('/resources');
   if (res.status === 200 && res.data && Array.isArray(res.data.data)) {
     assertSuccess(res);
   }
@@ -162,7 +161,7 @@ suite.test('Wrong-tenant token must not list another tenant requests', async () 
 
 suite.test('Cleanup — tenant injection record', async (ctx) => {
   if (!ctx.injectedId) return;
-  await client.delete(`/requests/${ctx.injectedId}`);
+  await client.delete(`/resources/${ctx.injectedId}`);
 });
 
 module.exports = suite;

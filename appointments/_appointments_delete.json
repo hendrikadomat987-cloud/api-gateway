@@ -22,7 +22,7 @@
             {
               "id": "field-tenant-id",
               "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id }}",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
               "type": "string"
             },
             {

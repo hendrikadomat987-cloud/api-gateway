@@ -255,6 +255,188 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
+  // ── requests — POST validation ───────────────────────────────────────────────
+  if (req.method === 'POST' && service === 'requests') {
+    // Whitelist: strip every field the client is not allowed to set.
+    // tenant_id is excluded — forwardRequest re-injects it from req.tenant_id.
+    const { customer_id, type, status, notes } = req.body || {};
+    req.body = {};
+    if (customer_id !== undefined) req.body.customer_id = typeof customer_id === 'string' ? customer_id.trim() : customer_id;
+    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (status      !== undefined) req.body.status      = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (notes       !== undefined) req.body.notes       = typeof notes === 'string' ? notes.trim() : notes;
+
+    // customer_id — required, must be a valid UUID
+    if (!req.body.customer_id) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id is required' },
+      });
+    }
+    if (!UUID_RE.test(req.body.customer_id)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id must be a valid UUID' },
+      });
+    }
+
+    // type — required, must be one of the allowed values
+    const VALID_REQUEST_TYPES = ['callback', 'support', 'quote', 'info'];
+    if (!req.body.type) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type is required' },
+      });
+    }
+    if (!VALID_REQUEST_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: callback, support, quote, info' },
+      });
+    }
+
+    // status — optional, must be one of the allowed values when provided
+    const VALID_REQUEST_STATUSES = ['pending', 'in_progress', 'resolved', 'closed'];
+    if (req.body.status !== undefined && !VALID_REQUEST_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: pending, in_progress, resolved, closed' },
+      });
+    }
+  }
+
+  // ── requests — PUT validation ────────────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'requests') {
+    // Whitelist: customer_id cannot be changed after creation.
+    // tenant_id excluded — forwardRequest re-injects it from req.tenant_id.
+    const { type, status, notes } = req.body || {};
+    req.body = {};
+    if (type   !== undefined) req.body.type   = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (status !== undefined) req.body.status = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (notes  !== undefined) req.body.notes  = typeof notes === 'string' ? notes.trim() : notes;
+
+    // At least one updatable field must be present
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of type, status, or notes is required',
+        },
+      });
+    }
+
+    // type — must be one of the allowed values when provided
+    const VALID_REQUEST_TYPES = ['callback', 'support', 'quote', 'info'];
+    if (req.body.type !== undefined && !VALID_REQUEST_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: callback, support, quote, info' },
+      });
+    }
+
+    // status — must be one of the allowed values when provided
+    const VALID_REQUEST_STATUSES = ['pending', 'in_progress', 'resolved', 'closed'];
+    if (req.body.status !== undefined && !VALID_REQUEST_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: pending, in_progress, resolved, closed' },
+      });
+    }
+  }
+
+  // ── resources — POST validation ──────────────────────────────────────────────
+  if (req.method === 'POST' && service === 'resources') {
+    // Whitelist: strip every field the client is not allowed to set.
+    // tenant_id is excluded — forwardRequest re-injects it from req.tenant_id.
+    const { name, type, content, status } = req.body || {};
+    req.body = {};
+    if (name    !== undefined) req.body.name    = typeof name === 'string' ? name.trim() : name;
+    if (type    !== undefined) req.body.type    = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (content !== undefined) req.body.content = typeof content === 'string' ? content.trim() : content;
+    if (status  !== undefined) req.body.status  = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    // name — required
+    if (!req.body.name || req.body.name === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'name is required' },
+      });
+    }
+
+    // type — required, must be one of the allowed values
+    const VALID_RESOURCE_TYPES = ['document', 'template', 'script', 'faq'];
+    if (!req.body.type) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type is required' },
+      });
+    }
+    if (!VALID_RESOURCE_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: document, template, script, faq' },
+      });
+    }
+
+    // status — optional, must be one of the allowed values when provided
+    const VALID_RESOURCE_STATUSES = ['active', 'draft', 'archived'];
+    if (req.body.status !== undefined && !VALID_RESOURCE_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: active, draft, archived' },
+      });
+    }
+  }
+
+  // ── resources — PUT validation ────────────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'resources') {
+    // Whitelist: tenant_id excluded — forwardRequest re-injects it from req.tenant_id.
+    const { name, type, content, status } = req.body || {};
+    req.body = {};
+    if (name    !== undefined) req.body.name    = typeof name === 'string' ? name.trim() : name;
+    if (type    !== undefined) req.body.type    = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (content !== undefined) req.body.content = typeof content === 'string' ? content.trim() : content;
+    if (status  !== undefined) req.body.status  = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    // At least one updatable field must be present
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of name, type, content, or status is required',
+        },
+      });
+    }
+
+    // name — must not be empty when provided
+    if (req.body.name !== undefined && req.body.name === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'name must not be empty' },
+      });
+    }
+
+    // type — must be one of the allowed values when provided
+    const VALID_RESOURCE_TYPES = ['document', 'template', 'script', 'faq'];
+    if (req.body.type !== undefined && !VALID_RESOURCE_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: document, template, script, faq' },
+      });
+    }
+
+    // status — must be one of the allowed values when provided
+    const VALID_RESOURCE_STATUSES = ['active', 'draft', 'archived'];
+    if (req.body.status !== undefined && !VALID_RESOURCE_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: active, draft, archived' },
+      });
+    }
+  }
+
   // Resolve method + id → concrete n8n webhook URL
   // Returns null when the service exists but has no webhook for this method/id combo
   const resolved = serviceMap.resolve(service, req.method, Boolean(id), id || null);

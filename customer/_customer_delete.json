@@ -12,10 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -1648,
-        64
-      ],
+      "position": [-1648, 64],
       "webhookId": "customer-delete-webhook-001"
     },
     {
@@ -25,7 +22,7 @@
             {
               "id": "field-tenant-id",
               "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id }}",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
               "type": "string"
             },
             {
@@ -42,23 +39,17 @@
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        -1472,
-        64
-      ]
+      "position": [-1472, 64]
     },
     {
       "parameters": {
-        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\n\nconst errors = [];\n\nif (!id) {\n  errors.push('id is required');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
+        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\nconst errors = [];\nlet errorCode = 'VALIDATION_ERROR';\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) {\n  errors.push('id is required');\n  errorCode = 'MISSING_ID';\n} else if (!UUID_RE.test(id)) {\n  errors.push('id must be a valid UUID');\n  errorCode = 'INVALID_ID';\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errorCode: errors.length > 0 ? errorCode : null,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
       },
       "id": "6d73be6d-b33c-4cc0-a026-1ec696b5958e",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1280,
-        64
-      ]
+      "position": [-1280, 64]
     },
     {
       "parameters": {
@@ -88,45 +79,7 @@
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        -1088,
-        64
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "cond-has-id",
-              "leftValue": "={{ $json.id }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "looseTypeValidation": true,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -864,
-        64
-      ],
-      "id": "f8eb9650-d7e5-43c9-a57b-4ac004a89957",
-      "name": "Has ID?"
+      "position": [-1088, 64]
     },
     {
       "parameters": {
@@ -139,10 +92,7 @@
       "onError": "continueRegularOutput",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -624,
-        -32
-      ],
+      "position": [-624, -32],
       "id": "7ca29846-131e-4eaa-9a1c-6298c0264cc6",
       "name": "DB DELETE",
       "credentials": {
@@ -151,73 +101,6 @@
           "name": "Postgres account"
         }
       }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 1
-          },
-          "conditions": [
-            {
-              "id": "cond-db-error",
-              "leftValue": "={{ $json.error !== undefined }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        -400,
-        -32
-      ],
-      "id": "b1c2d3e4-f5a6-7890-bcde-db0error0001",
-      "name": "DB DELETE Error?"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 1
-          },
-          "conditions": [
-            {
-              "id": "cond-rows-affected",
-              "leftValue": "={{ $json.id ? true : false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        -176,
-        -32
-      ],
-      "id": "afaf3d98-5856-4d20-b808-31c39f785c22",
-      "name": "Rows Affected?"
     },
     {
       "parameters": {
@@ -243,10 +126,7 @@
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        48,
-        -128
-      ]
+      "position": [-384, -32]
     },
     {
       "parameters": {
@@ -258,15 +138,12 @@
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        256,
-        -128
-      ]
+      "position": [-144, -32]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: false, error: { code: 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
+        "responseBody": "={{ { success: false, error: { code: $json.errorCode || 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
         "options": {
           "responseCode": 400
         }
@@ -275,174 +152,31 @@
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        -1088,
-        256
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { success: false, error: { code: 'VALIDATION_ERROR', message: 'id is required' } } }}",
-        "options": {
-          "responseCode": 400
-        }
-      },
-      "id": "e451c098-3448-4499-ab9f-1a34aa5c381c",
-      "name": "Respond Error1",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        -624,
-        192
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } } }}",
-        "options": {
-          "responseCode": 404
-        }
-      },
-      "id": "2aa07695-a121-4f1c-b5a3-c99418b7aa28",
-      "name": "Respond Error2",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        48,
-        96
-      ]
+      "position": [-1088, 256]
     }
   ],
   "pinData": {},
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Set Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
     },
     "Set Fields": {
-      "main": [
-        [
-          {
-            "node": "Validate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
     },
     "Validate": {
-      "main": [
-        [
-          {
-            "node": "Is Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
     },
     "Is Valid?": {
       "main": [
-        [
-          {
-            "node": "Has ID?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has ID?": {
-      "main": [
-        [
-          {
-            "node": "DB DELETE",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error1",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "DB DELETE", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
       ]
     },
     "DB DELETE": {
-      "main": [
-        [
-          {
-            "node": "DB DELETE Error?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "DB DELETE Error?": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Rows Affected?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Rows Affected?": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Format Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
     },
     "Format Response": {
-      "main": [
-        [
-          {
-            "node": "Respond Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
     }
   },
   "active": true,

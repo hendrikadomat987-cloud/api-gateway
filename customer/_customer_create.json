@@ -12,10 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -1600,
-        240
-      ],
+      "position": [-1600, 240],
       "webhookId": "customer-webhook-001"
     },
     {
@@ -43,13 +40,7 @@
             {
               "id": "field-tenant-id",
               "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id }}",
-              "type": "string"
-            },
-            {
-              "id": "field-created-at",
-              "name": "created_at",
-              "value": "={{ $now.toISO() }}",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
               "type": "string"
             }
           ]
@@ -60,23 +51,17 @@
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        -1424,
-        240
-      ]
+      "position": [-1424, 240]
     },
     {
       "parameters": {
-        "jsCode": "const name = ($json.name || '').trim();\nconst phone = ($json.phone || '').trim();\nconst email = ($json.email || '').trim();\nconst tenant_id = ($json.tenant_id || '').trim();\nconst created_at = $json.created_at;\n\nconst errors = [];\n\n// Pflichtfelder prüfen\nif (!name) {\n  errors.push('name is required');\n}\n\nconst hasPhone = phone.length > 0;\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst hasValidEmail = email.length > 0 && emailRegex.test(email);\n\nif (!hasPhone && !hasValidEmail) {\n  errors.push('phone or a valid email is required');\n} else if (email.length > 0 && !hasValidEmail) {\n  errors.push('email format is invalid');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    name,\n    phone,\n    email,\n    tenant_id,\n    created_at\n  }\n}];"
+        "jsCode": "const name = ($json.name || '').trim();\nconst phone = ($json.phone || '').trim();\nconst email = ($json.email || '').trim();\nconst tenant_id = ($json.tenant_id || '').trim();\n\nconst errors = [];\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!name) {\n  errors.push('name is required');\n}\n\nconst hasPhone = phone.length > 0;\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst hasValidEmail = email.length > 0 && emailRegex.test(email);\n\nif (!hasPhone && !hasValidEmail) {\n  errors.push('phone or a valid email is required');\n} else if (email.length > 0 && !hasValidEmail) {\n  errors.push('email format is invalid');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    name,\n    phone,\n    email,\n    tenant_id\n  }\n}];"
       },
       "id": "a653fc2a-38a2-4f1e-932e-773629fa9ecb",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1232,
-        240
-      ]
+      "position": [-1232, 240]
     },
     {
       "parameters": {
@@ -106,10 +91,7 @@
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        -1040,
-        240
-      ]
+      "position": [-1040, 240]
     },
     {
       "parameters": {
@@ -121,10 +103,7 @@
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -720,
-        160
-      ],
+      "position": [-720, 160],
       "id": "062511d1-b1ba-425b-888b-8bc71af6161e",
       "name": "DB Insert",
       "credentials": {
@@ -164,30 +143,24 @@
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        -480,
-        160
-      ]
+      "position": [-480, 160]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"success\": true,\n  \"data\": {\n    \"id\": \"{{$json.id}}\",\n    \"tenant_id\": \"{{$json.tenant_id}}\"\n  }\n}",
+        "responseBody": "={{ { success: true, data: { id: $json.id, tenant_id: $json.tenant_id } } }}",
         "options": {}
       },
       "id": "74233697-2d53-4b7c-b162-5b7e754d40e2",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        -288,
-        160
-      ]
+      "position": [-288, 160]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\n  success: false,\n  error: \"VALIDATION_ERROR\",\n  details: $json.errors || [\"Unknown error\"]\n} }}",
+        "responseBody": "={{ { success: false, error: { code: 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
         "options": {
           "responseCode": 400
         }
@@ -196,86 +169,31 @@
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        -720,
-        352
-      ]
+      "position": [-720, 352]
     }
   ],
   "pinData": {},
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Set Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
     },
     "Set Fields": {
-      "main": [
-        [
-          {
-            "node": "Validate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
     },
     "Validate": {
-      "main": [
-        [
-          {
-            "node": "Is Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
     },
     "Is Valid?": {
       "main": [
-        [
-          {
-            "node": "DB Insert",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "DB Insert", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
       ]
     },
     "DB Insert": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
     },
     "Format Response": {
-      "main": [
-        [
-          {
-            "node": "Respond Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
     }
   },
   "active": true,

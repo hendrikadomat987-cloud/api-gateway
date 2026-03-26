@@ -21,7 +21,7 @@
             {
               "id": "field-tenant-id",
               "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id }}",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
               "type": "string"
             },
             {
@@ -112,12 +112,11 @@
           "conditions": [
             {
               "id": "cond-empty",
-              "leftValue": "=={{ $input.all().length }}",
-              "rightValue": "0",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
               "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "type": "number",
+                "operation": "equals"
               }
             }
           ],
@@ -159,6 +158,8 @@
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: $json.success, data: $json.data } }}",
         "options": {}
       },
       "id": "a3b00008-0003-0003-0003-000000000008",
