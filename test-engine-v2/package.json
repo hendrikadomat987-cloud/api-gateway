@@ -1,0 +1,25 @@
+{
+  "name": "api-gateway-test-engine",
+  "version": "2.0.0",
+  "description": "Production-grade automated test engine for the multi-service API Gateway",
+  "main": "run-tests.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:customers": "jest services/customers",
+    "test:requests": "jest services/requests",
+    "test:resources": "jest services/resources",
+    "test:scenarios": "jest scenarios",
+    "test:ci": "jest --runInBand --forceExit",
+    "generate-token": "node generate-token.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

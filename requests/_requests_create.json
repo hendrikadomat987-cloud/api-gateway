@@ -61,7 +61,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst customer_id = ($json.customer_id || '').trim();\nconst type = ($json.type || '').trim().toLowerCase();\nconst status = ($json.status || 'pending').trim().toLowerCase();\nconst notes = $json.notes ? ($json.notes + '').trim() : null;\n\nconst errors = [];\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_TYPES = ['callback','support','quote','info'];\nconst VALID_STATUSES = ['pending','in_progress','resolved','closed'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!customer_id) errors.push('customer_id is required');\nelse if (!UUID_RE.test(customer_id)) errors.push('customer_id must be a valid UUID');\n\nif (!type) errors.push('type is required');\nelse if (!VALID_TYPES.includes(type)) errors.push('type must be one of: callback, support, quote, info');\n\nif (!VALID_STATUSES.includes(status)) errors.push('status must be one of: pending, in_progress, resolved, closed');\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    customer_id,\n    type,\n    status,\n    notes\n  }\n}];"
+        "jsCode": "const tenant_id   = ($json.tenant_id   || '').trim();\nconst customer_id = ($json.customer_id || '').trim();\nconst type        = ($json.type        || '').trim().toLowerCase();\nconst status      = ($json.status      || 'pending').trim().toLowerCase();\nconst notes       = $json.notes ? ($json.notes + '').trim() : null;\n\nconst errors = [];\nconst UUID_RE        = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_TYPES    = ['callback', 'support', 'quote', 'info'];\nconst VALID_STATUSES = ['pending', 'in_progress', 'resolved', 'closed'];\n\nif (!tenant_id)\n  errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id))\n  errors.push('tenant_id must be a valid UUID');\n\nif (!customer_id)\n  errors.push('customer_id is required');\nelse if (!UUID_RE.test(customer_id))\n  errors.push('customer_id must be a valid UUID');\n\nif (!type)\n  errors.push('type is required');\nelse if (!VALID_TYPES.includes(type))\n  errors.push('type must be one of: callback, support, quote, info');\n\nif (!VALID_STATUSES.includes(status))\n  errors.push('status must be one of: pending, in_progress, resolved, closed');\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    customer_id,\n    type,\n    status,\n    notes\n  }\n}];"
       },
       "id": "c0010003-0000-0000-0000-000000000003",
       "name": "Validate",
@@ -104,7 +104,7 @@
         "operation": "executeQuery",
         "query": "select * from public.request_create($1, $2, $3, $4, $5);",
         "options": {
-          "queryReplacement": "={{ [$json.tenant_id, $json.customer_id, $json.type, $json.status, $json.notes] }}"
+          "queryReplacement": "={{ [$('Validate').item.json.tenant_id, $('Validate').item.json.customer_id, $('Validate').item.json.type, $('Validate').item.json.status, $('Validate').item.json.notes] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
@@ -112,6 +112,7 @@
       "position": [-720, 160],
       "id": "c0010005-0000-0000-0000-000000000005",
       "name": "DB Insert",
+      "onError": "continueErrorOutput",
       "credentials": {
         "postgres": {
           "id": "Enm2PEWvhVMtE5CI",
@@ -121,47 +122,39 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "resp-success",
-              "name": "success",
-              "value": true,
-              "type": "boolean"
-            },
-            {
-              "id": "resp-id",
-              "name": "id",
-              "value": "={{ $json.id ?? null }}",
-              "type": "string"
-            },
-            {
-              "id": "resp-tenant-id",
-              "name": "tenant_id",
-              "value": "={{ $json.tenant_id ?? null }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "// Map DB errors to user-facing codes and messages.\n// Output 1 of DB Insert carries: { error: { message: '...', name: '...' } }\nconst raw = ($json.error && ($json.error.message || String($json.error))) || 'Database error';\nconst lower = raw.toLowerCase();\n\nlet code    = 'DB_ERROR';\nlet message = raw;\n\nif (lower.includes('foreign key') || lower.includes('violates') || lower.includes('fkey')) {\n  code    = 'VALIDATION_ERROR';\n  message = 'customer_id does not exist for this tenant';\n} else if (lower.includes('invalid_type') || lower.includes('invalid type')) {\n  code    = 'VALIDATION_ERROR';\n  message = 'type must be one of: callback, support, quote, info';\n} else if (lower.includes('invalid_status') || lower.includes('invalid status')) {\n  code    = 'VALIDATION_ERROR';\n  message = 'status must be one of: pending, in_progress, resolved, closed';\n}\n\nreturn [{ json: { code, message } }];"
       },
-      "id": "c0010006-0000-0000-0000-000000000006",
-      "name": "Format Response",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [-480, 160]
+      "id": "c0010009-0000-0000-0000-000000000009",
+      "name": "Parse DB Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-480, 352]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: true, data: { id: $json.id, tenant_id: $json.tenant_id } } }}",
+        "responseBody": "={{ { success: false, error: { code: $json.code, message: $json.message } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c0010010-0000-0000-0000-000000000010",
+      "name": "Respond DB Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-240, 352]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, data: $json } }}",
         "options": {}
       },
       "id": "c0010007-0000-0000-0000-000000000007",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [-288, 160]
+      "position": [-480, 160]
     },
     {
       "parameters": {
@@ -196,10 +189,13 @@
       ]
     },
     "DB Insert": {
-      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "Respond Success", "type": "main", "index": 0 }],
+        [{ "node": "Parse DB Error", "type": "main", "index": 0 }]
+      ]
     },
-    "Format Response": {
-      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    "Parse DB Error": {
+      "main": [[{ "node": "Respond DB Error", "type": "main", "index": 0 }]]
     }
   },
   "active": true,
@@ -208,7 +204,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "c0010000-0000-0000-0000-000000000000",
+  "versionId": "c0010000-0000-0000-0000-000000000001",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"

@@ -115,10 +115,19 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
       });
     }
 
-    if (!req.body.email || req.body.email === '') {
+    const hasEmail = req.body.email && req.body.email !== '';
+    const hasPhone = req.body.phone && req.body.phone !== '';
+    if (!hasEmail && !hasPhone) {
       return res.status(400).json({
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: 'email is required' },
+        error: { code: 'VALIDATION_ERROR', message: 'email or phone is required' },
+      });
+    }
+
+    if (hasEmail && (!req.body.email.includes('@') || !req.body.email.includes('.'))) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' },
       });
     }
   }

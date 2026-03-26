@@ -35,7 +35,17 @@
       "Bash(node -e \":*)",
       "Bash(node -e \"const fs=require\\(''fs''\\);try{JSON.parse\\(fs.readFileSync\\(''_customer_get.json'',''utf8''\\)\\);console.log\\(''OK''\\)}catch\\(e\\){console.log\\(''FAIL:'',e.message\\)}\")",
       "Bash(node -e \"const fs=require\\(''fs''\\);try{JSON.parse\\(fs.readFileSync\\(''_customer_create.json'',''utf8''\\)\\);console.log\\(''OK''\\)}catch\\(e\\){console.log\\(''FAIL:'',e.message\\)}\")",
-      "Bash(JWT_SECRET=test node -e \":*)"
+      "Bash(JWT_SECRET=test node -e \":*)",
+      "Bash(node -e \"const fs=require\\(''fs''\\);try{JSON.parse\\(fs.readFileSync\\(''_requests_create.json'',''utf8''\\)\\);console.log\\(''OK''\\)}catch\\(e\\){console.log\\(''FAIL:'',e.message\\)}\")",
+      "mcp__n8n-mcp__n8n_get_workflow",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); n8n=d.get\\(''''mcpServers'''',{}\\).get\\(''''n8n-mcp'''',{}\\); env=n8n.get\\(''''env'''',{}\\); print\\(''''N8N_API_URL:'''', env.get\\(''''N8N_API_URL'''',''''not set''''\\)\\); print\\(''''N8N_API_KEY set:'''', bool\\(env.get\\(''''N8N_API_KEY''''\\)\\)\\)\")",
+      "Bash(node:*)",
+      "Bash(grep -r \"JWT_SECRET\\\\|jwt_secret\\\\|am-gastro\" C:/Users/hendr/claude-ai-voice-agent --include=*.env --include=*.env.* --include=*.json -l)",
+      "Bash(do node:*)",
+      "Bash(echo \"SYNTAX OK: $f\")",
+      "Bash(echo \"SYNTAX FAIL: $f\")",
+      "Bash(npx jest:*)",
+      "Bash(grep -r require.*config C:Usershendrclaude-ai-voice-agenttest-engine-v2services --include=*.test.js -l)"
     ]
   }
 }
