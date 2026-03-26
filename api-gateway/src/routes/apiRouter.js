@@ -161,6 +161,100 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
+  // ── appointments — POST validation ──────────────────────────────────────────
+  if (req.method === 'POST' && service === 'appointments') {
+    // Whitelist: strip every field the client is not allowed to set.
+    // tenant_id is excluded — forwardRequest re-injects it from req.tenant_id.
+    const { customer_id, scheduled_at, duration_minutes, status, notes } = req.body || {};
+    req.body = {};
+    if (customer_id      !== undefined) req.body.customer_id      = typeof customer_id === 'string' ? customer_id.trim() : customer_id;
+    if (scheduled_at     !== undefined) req.body.scheduled_at     = typeof scheduled_at === 'string' ? scheduled_at.trim() : scheduled_at;
+    if (duration_minutes !== undefined) req.body.duration_minutes = Number(duration_minutes);
+    if (status           !== undefined) req.body.status           = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (notes            !== undefined) req.body.notes            = typeof notes === 'string' ? notes.trim() : notes;
+
+    // customer_id — required, must be a valid UUID
+    if (!req.body.customer_id) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id is required' },
+      });
+    }
+    if (!UUID_RE.test(req.body.customer_id)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id must be a valid UUID' },
+      });
+    }
+
+    // scheduled_at — required, must be a parseable ISO 8601 datetime
+    if (!req.body.scheduled_at) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'scheduled_at is required' },
+      });
+    }
+    if (isNaN(new Date(req.body.scheduled_at).getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'scheduled_at must be a valid ISO 8601 timestamp' },
+      });
+    }
+
+    // duration_minutes — optional, must be an integer between 1 and 1440 when provided
+    if (req.body.duration_minutes !== undefined) {
+      const dm = req.body.duration_minutes;
+      if (!Number.isInteger(dm) || dm < 1 || dm > 1440) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'duration_minutes must be an integer between 1 and 1440' },
+        });
+      }
+    }
+  }
+
+  // ── appointments — PUT validation ───────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'appointments') {
+    // Whitelist: customer_id cannot be changed after creation.
+    // tenant_id excluded — forwardRequest re-injects it from req.tenant_id.
+    const { scheduled_at, duration_minutes, status, notes } = req.body || {};
+    req.body = {};
+    if (scheduled_at     !== undefined) req.body.scheduled_at     = typeof scheduled_at === 'string' ? scheduled_at.trim() : scheduled_at;
+    if (duration_minutes !== undefined) req.body.duration_minutes = Number(duration_minutes);
+    if (status           !== undefined) req.body.status           = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (notes            !== undefined) req.body.notes            = typeof notes === 'string' ? notes.trim() : notes;
+
+    // At least one updatable field must be present
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of scheduled_at, duration_minutes, status, or notes is required',
+        },
+      });
+    }
+
+    // scheduled_at format check when provided
+    if (req.body.scheduled_at !== undefined && isNaN(new Date(req.body.scheduled_at).getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'scheduled_at must be a valid ISO 8601 timestamp' },
+      });
+    }
+
+    // duration_minutes range check when provided
+    if (req.body.duration_minutes !== undefined) {
+      const dm = req.body.duration_minutes;
+      if (!Number.isInteger(dm) || dm < 1 || dm > 1440) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'duration_minutes must be an integer between 1 and 1440' },
+        });
+      }
+    }
+  }
+
   // Resolve method + id → concrete n8n webhook URL
   // Returns null when the service exists but has no webhook for this method/id combo
   const resolved = serviceMap.resolve(service, req.method, Boolean(id), id || null);

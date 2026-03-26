@@ -1,0 +1,329 @@
+{
+  "name": "/appointments/update",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "appointments/update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a4b00001-0004-0004-0004-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1648, 64],
+      "webhookId": "appointments-update-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $json.body.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "field-id",
+              "name": "id",
+              "value": "={{ $json.query.id }}",
+              "type": "string"
+            },
+            {
+              "id": "field-scheduled-at",
+              "name": "scheduled_at",
+              "value": "={{ $json.body.scheduled_at ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "field-duration-minutes",
+              "name": "duration_minutes",
+              "value": "={{ $json.body.duration_minutes ?? null }}",
+              "type": "number"
+            },
+            {
+              "id": "field-status",
+              "name": "status",
+              "value": "={{ $json.body.status ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "field-notes",
+              "name": "notes",
+              "value": "={{ $json.body.notes ?? null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4b00002-0004-0004-0004-000000000002",
+      "name": "Set Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1456, 64]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\nconst scheduled_at = $json.scheduled_at ? ($json.scheduled_at + '').trim() : null;\nconst duration_minutes = $json.duration_minutes !== null && $json.duration_minutes !== undefined ? parseInt($json.duration_minutes, 10) : null;\nconst status = $json.status ? ($json.status + '').trim().toLowerCase() : null;\nconst notes = $json.notes ? ($json.notes + '').trim() : null;\n\nconst errors = [];\nlet errorCode = 'VALIDATION_ERROR';\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_STATUSES = ['scheduled','confirmed','cancelled','completed'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) {\n  errors.push('id is required');\n  errorCode = 'MISSING_ID';\n} else if (!UUID_RE.test(id)) {\n  errors.push('id must be a valid UUID');\n  errorCode = 'INVALID_ID';\n}\n\nif (scheduled_at === null && duration_minutes === null && status === null && notes === null) {\n  errors.push('at least one of scheduled_at, duration_minutes, status, or notes is required');\n}\n\nif (scheduled_at !== null) {\n  const d = new Date(scheduled_at);\n  if (isNaN(d.getTime())) errors.push('scheduled_at must be a valid ISO 8601 timestamp');\n}\n\nif (duration_minutes !== null && (isNaN(duration_minutes) || duration_minutes < 1 || duration_minutes > 1440)) {\n  errors.push('duration_minutes must be an integer between 1 and 1440');\n}\n\nif (status !== null && !VALID_STATUSES.includes(status)) {\n  errors.push('status must be one of: scheduled, confirmed, cancelled, completed');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errorCode: errors.length > 0 ? errorCode : null,\n    errors,\n    tenant_id,\n    id,\n    scheduled_at,\n    duration_minutes,\n    status,\n    notes\n  }\n}];"
+      },
+      "id": "a4b00003-0004-0004-0004-000000000003",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1248, 64]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a4b00004-0004-0004-0004-000000000004",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1040, 64]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "norm-id",
+              "name": "id",
+              "value": "={{ $('Validate').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $('Validate').item.json.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-scheduled-at",
+              "name": "scheduled_at",
+              "value": "={{ $('Validate').item.json.scheduled_at }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-duration-minutes",
+              "name": "duration_minutes",
+              "value": "={{ $('Validate').item.json.duration_minutes }}",
+              "type": "number"
+            },
+            {
+              "id": "norm-status",
+              "name": "status",
+              "value": "={{ $('Validate').item.json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-notes",
+              "name": "notes",
+              "value": "={{ $('Validate').item.json.notes }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4b00005-0004-0004-0004-000000000005",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-816, 64]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from public.appointment_update($1, $2, $3, $4, $5, $6);",
+        "options": {
+          "queryReplacement": "={{ [$json.tenant_id, $json.id, $json.scheduled_at, $json.duration_minutes, $json.status, $json.notes] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-592, 64],
+      "id": "a4b00006-0004-0004-0004-000000000006",
+      "name": "DB UPDATE",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-rows-affected",
+              "leftValue": "={{ ($json.id || $json[0]?.id) ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-368, 64],
+      "id": "a4b00007-0004-0004-0004-000000000007",
+      "name": "Rows Affected?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-updated",
+              "name": "updated",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "resp-id",
+              "name": "id",
+              "value": "={{ $json.id || $json[0]?.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4b00008-0004-0004-0004-000000000008",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-144, -48]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, data: { id: $json.id, updated: $json.updated } } }}",
+        "options": {}
+      },
+      "id": "a4b00009-0004-0004-0004-000000000009",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [80, -48]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: $json.errorCode || 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "a4b00010-0004-0004-0004-000000000010",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1040, 288]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found for this tenant' } } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "a4b00011-0004-0004-0004-000000000011",
+      "name": "Respond Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-368, 192]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
+    },
+    "Set Fields": {
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
+    },
+    "Validate": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "Normalize Input", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalize Input": {
+      "main": [[{ "node": "DB UPDATE", "type": "main", "index": 0 }]]
+    },
+    "DB UPDATE": {
+      "main": [[{ "node": "Rows Affected?", "type": "main", "index": 0 }]]
+    },
+    "Rows Affected?": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }],
+        [{ "node": "Respond Not Found", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a4000001-0000-0000-0000-000000000004",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
+  },
+  "id": "AppointmentsUpdateWorkflow01",
+  "tags": [
+    {
+      "updatedAt": "2026-03-26T00:00:00.000Z",
+      "createdAt": "2026-03-26T00:00:00.000Z",
+      "id": "appointments-service-tag",
+      "name": "appointments-service"
+    }
+  ]
+}

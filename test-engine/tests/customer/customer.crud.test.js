@@ -41,27 +41,13 @@ const suite = createSuite('Customer CRUD');
 // ═════════════════════════════════════════════════════════════════════════════
 
 suite.test('Create customer — success', async (ctx) => {
-  try {
-    const res = await client.post('/customer', VALID_CUSTOMER);
+  const res = await client.post('/customer', VALID_CUSTOMER);
 
-    console.log("STATUS:", res.status);
-    console.log("RESPONSE:", JSON.stringify(res.data, null, 2));
+  assertStatus(res, 200);
+  assertSuccess(res);
+  assertSchema(res, ['id']);
 
-    assertStatus(res, 200);
-    assertSuccess(res);
-    assertSchema(res, ['id']);
-
-    ctx.customerId = res.data.data.id;
-
-  } catch (err) {
-    if (err.response) {
-      console.log("❌ ERROR STATUS:", err.response.status);
-      console.log("❌ ERROR RESPONSE:", JSON.stringify(err.response.data, null, 2));
-    } else {
-      console.log("❌ NETWORK ERROR:", err.message);
-    }
-    throw err;
-  }
+  ctx.customerId = res.data.data.id;
 }, { critical: true }); // no ID → subsequent tests would all fail
 
 suite.test('Read customer — success', async (ctx) => {

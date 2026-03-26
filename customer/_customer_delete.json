@@ -1,21 +1,22 @@
 {
-  "name": "/customer/get",
+  "name": "/customer/delete",
   "nodes": [
     {
       "parameters": {
-        "path": "customer/get",
+        "httpMethod": "DELETE",
+        "path": "customer/delete",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "0f88b8b1-58c2-4fb9-ac8a-301a0d96c6ee",
+      "id": "65211815-6700-48f3-a9d9-2a042dda3328",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -1520,
-        240
+        -1648,
+        64
       ],
-      "webhookId": "2782bbef-520e-42ff-9a5f-42d491637ce4"
+      "webhookId": "customer-delete-webhook-001"
     },
     {
       "parameters": {
@@ -28,7 +29,7 @@
               "type": "string"
             },
             {
-              "id": "719a89ea-37b3-4a62-a772-862d51699d0e",
+              "id": "field-id",
               "name": "id",
               "value": "={{ $json.query.id }}",
               "type": "string"
@@ -37,26 +38,26 @@
         },
         "options": {}
       },
-      "id": "2f53eb51-ad33-42d2-b853-4709c484a9d4",
+      "id": "333f8969-5724-4a18-9c54-a30e7c57961b",
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1344,
-        240
+        -1472,
+        64
       ]
     },
     {
       "parameters": {
-        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\n\nconst errors = [];\n\nif (!tenant_id) {\n  errors.push('tenant_id is required');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
+        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\n\nconst errors = [];\n\nif (!id) {\n  errors.push('id is required');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
       },
-      "id": "3387ff96-f3be-4f86-8bcc-52b2496d461b",
+      "id": "6d73be6d-b33c-4cc0-a026-1ec696b5958e",
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1152,
-        240
+        -1280,
+        64
       ]
     },
     {
@@ -83,13 +84,13 @@
         },
         "options": {}
       },
-      "id": "6e2c47fc-02d9-4900-9fd0-6c09ec802a6d",
+      "id": "6c64920f-90a6-47e7-a1ad-9eccd37bccc2",
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -960,
-        240
+        -1088,
+        64
       ]
     },
     {
@@ -103,7 +104,7 @@
           },
           "conditions": [
             {
-              "id": "058660b9-2ee7-4524-baf7-db5fce202546",
+              "id": "cond-has-id",
               "leftValue": "={{ $json.id }}",
               "rightValue": "",
               "operator": {
@@ -121,51 +122,29 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -720,
-        240
+        -864,
+        64
       ],
-      "id": "915523c6-43b1-4c80-b356-ef8bc1fbac05",
+      "id": "f8eb9650-d7e5-43c9-a57b-4ac004a89957",
       "name": "Has ID?"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "select * from public.customer_get_by_id($1, $2);",
+        "query": "select public.customer_delete($1, $2) as id;",
         "options": {
-          "queryReplacement": "={{ [$('Validate').item.json.tenant_id, $('Validate').item.json.id] }}"
+          "queryReplacement": "={{ [$json.tenant_id, $json.id] }}"
         }
       },
+      "onError": "continueRegularOutput",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -496,
-        112
+        -624,
+        -32
       ],
-      "id": "8af2bbbf-8694-4a38-83a4-c863e9b0872c",
-      "name": "GET customer by ID",
-      "credentials": {
-        "postgres": {
-          "id": "Enm2PEWvhVMtE5CI",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "select * from public.customer_get_all($1);",
-        "options": {
-          "queryReplacement": "={{ [$('Validate').item.json.tenant_id] }}"
-        }
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -496,
-        368
-      ],
-      "id": "a039316c-1f7f-457f-b1a6-ed4770e5a424",
-      "name": "Get All Customers",
+      "id": "7ca29846-131e-4eaa-9a1c-6298c0264cc6",
+      "name": "DB DELETE",
       "credentials": {
         "postgres": {
           "id": "Enm2PEWvhVMtE5CI",
@@ -180,17 +159,16 @@
             "caseSensitive": true,
             "leftValue": "",
             "typeValidation": "strict",
-            "version": 3
+            "version": 1
           },
           "conditions": [
             {
-              "id": "ebc5aaf9-8f47-40c1-8fe9-9ec82330e513",
-              "leftValue": "=={{ $input.all().length }}",
-              "rightValue": "0",
+              "id": "cond-db-error",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "type": "boolean",
+                "operation": "true"
               }
             }
           ],
@@ -199,65 +177,90 @@
         "options": {}
       },
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
+      "typeVersion": 2,
       "position": [
-        -256,
-        112
+        -400,
+        -32
       ],
-      "id": "470b5a54-e081-4517-8783-838e2b50b072",
-      "name": "Customer found?"
+      "id": "b1c2d3e4-f5a6-7890-bcde-db0error0001",
+      "name": "DB DELETE Error?"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-rows-affected",
+              "leftValue": "={{ $json.id ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "position": [
-        -32,
-        240
+        -176,
+        -32
       ],
-      "id": "7efcf4f4-d440-44d9-b417-711d1c6bff02",
-      "name": "Merge"
+      "id": "afaf3d98-5856-4d20-b808-31c39f785c22",
+      "name": "Rows Affected?"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "resp-success",
-              "name": "success",
+              "id": "resp-deleted",
+              "name": "deleted",
               "value": true,
               "type": "boolean"
             },
             {
-              "id": "resp-data",
-              "name": "data",
-              "value": "={{ $input.all().length === 1 ? $input.first().json : $input.all().map(item => item.json) }}",
-              "type": "json"
+              "id": "resp-id",
+              "name": "id",
+              "value": "={{ $json.id ?? $('Validate').item.json.id }}",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "1896e04d-0fba-4c65-bd75-820a47d8e0cf",
+      "id": "9485fdc3-3398-468c-a970-b4bd59bf7752",
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        176,
-        240
+        48,
+        -128
       ]
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, data: { deleted: $json.deleted, id: $json.id } } }}",
         "options": {}
       },
-      "id": "83ffb76a-7e2d-4c80-91f1-5c6e7a6310ab",
+      "id": "388d3657-19fb-4604-860b-3b9fa0f4f2a4",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        368,
-        240
+        256,
+        -128
       ]
     },
     {
@@ -268,13 +271,30 @@
           "responseCode": 400
         }
       },
-      "id": "d68de3e0-1e3f-4af7-be2e-b1f95594ed53",
+      "id": "353b1f44-de79-4bb8-879c-4149bf4b3a74",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -720,
-        432
+        -1088,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: 'VALIDATION_ERROR', message: 'id is required' } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "e451c098-3448-4499-ab9f-1a34aa5c381c",
+      "name": "Respond Error1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -624,
+        192
       ]
     },
     {
@@ -285,13 +305,13 @@
           "responseCode": 404
         }
       },
-      "id": "09f9ba0c-eea9-44c5-b223-274de03b7f3a",
-      "name": "Respond Error1",
+      "id": "2aa07695-a121-4f1c-b5a3-c99418b7aa28",
+      "name": "Respond Error2",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -32,
-        -32
+        48,
+        96
       ]
     }
   ],
@@ -352,62 +372,58 @@
       "main": [
         [
           {
-            "node": "GET customer by ID",
+            "node": "DB DELETE",
             "type": "main",
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Get All Customers",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GET customer by ID": {
-      "main": [
-        [
-          {
-            "node": "Customer found?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Customer found?": {
-      "main": [
         [
           {
             "node": "Respond Error1",
             "type": "main",
             "index": 0
           }
-        ],
+        ]
+      ]
+    },
+    "DB DELETE": {
+      "main": [
         [
           {
-            "node": "Merge",
+            "node": "DB DELETE Error?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get All Customers": {
+    "DB DELETE Error?": {
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "Format Response",
             "type": "main",
-            "index": 1
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rows Affected?",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
-    "Merge": {
+    "Rows Affected?": {
       "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Format Response",
@@ -435,11 +451,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "a1a82f61-11e0-4a01-8d82-063493d54e59",
+  "versionId": "28d00aa3-8899-4dd6-9808-33c10df242b4",
   "meta": {
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
   },
-  "id": "1hbLaMDhK8xcwUcH",
+  "id": "K7Z77M8Icz61Tm8j",
   "tags": [
     {
       "updatedAt": "2026-03-18T21:55:16.631Z",

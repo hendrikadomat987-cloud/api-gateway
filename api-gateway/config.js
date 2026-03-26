@@ -54,7 +54,14 @@ const config = {
       PUT_ID:    'customer/update',   // PUT    /api/v1/customer/:id
       DELETE_ID: 'customer/delete',   // DELETE /api/v1/customer/:id
     },
-    appointment:  'appointment_service',
+    appointments: {
+      POST:      'appointments/create',   // POST   /api/v1/appointments
+      GET:       'appointments/list',     // GET    /api/v1/appointments
+      GET_ID:    'appointments/get',      // GET    /api/v1/appointments/:id
+      PUT_ID:    'appointments/update',   // PUT    /api/v1/appointments/:id
+      DELETE_ID: 'appointments/delete',   // DELETE /api/v1/appointments/:id
+    },
+    appointment:  'appointment_service',   // legacy — preserved for backward compatibility
     availability: 'availability_service',
     request:      'request_service',
   },

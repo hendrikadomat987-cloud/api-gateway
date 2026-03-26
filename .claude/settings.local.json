@@ -18,7 +18,13 @@
       "Bash(find C:/Users/hendr/AppData -name *.json)",
       "Bash(env)",
       "Bash(curl -s --max-time 3 http://localhost:5678/healthz)",
-      "mcp__filesystem__list_directory"
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__read_multiple_files",
+      "Bash(node -e \"require\\(''./config''\\)\")",
+      "Bash(node --check config.js)",
+      "Bash(node --check src/routes/apiRouter.js)",
+      "Bash(node --check src/services/serviceMap.js)",
+      "Bash(node --check src/utils/forwardRequest.js)"
     ]
   }
 }

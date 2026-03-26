@@ -1,0 +1,317 @@
+{
+  "name": "/requests/update",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "requests/update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "r4a00001-0004-0004-0004-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1648, 64],
+      "webhookId": "requests-update-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $json.body.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "field-id",
+              "name": "id",
+              "value": "={{ $json.query.id }}",
+              "type": "string"
+            },
+            {
+              "id": "field-type",
+              "name": "type",
+              "value": "={{ $json.body.type ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "field-status",
+              "name": "status",
+              "value": "={{ $json.body.status ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "field-notes",
+              "name": "notes",
+              "value": "={{ $json.body.notes ?? null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "r4a00002-0004-0004-0004-000000000002",
+      "name": "Set Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1456, 64]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\nconst type = $json.type ? ($json.type + '').trim().toLowerCase() : null;\nconst status = $json.status ? ($json.status + '').trim().toLowerCase() : null;\nconst notes = $json.notes ? ($json.notes + '').trim() : null;\n\nconst errors = [];\nlet errorCode = 'VALIDATION_ERROR';\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst VALID_TYPES = ['callback','support','quote','info'];\nconst VALID_STATUSES = ['pending','in_progress','resolved','closed'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) {\n  errors.push('id is required');\n  errorCode = 'MISSING_ID';\n} else if (!UUID_RE.test(id)) {\n  errors.push('id must be a valid UUID');\n  errorCode = 'INVALID_ID';\n}\n\nif (type === null && status === null && notes === null) {\n  errors.push('at least one of type, status, or notes is required');\n}\n\nif (type !== null && !VALID_TYPES.includes(type)) {\n  errors.push('type must be one of: callback, support, quote, info');\n}\n\nif (status !== null && !VALID_STATUSES.includes(status)) {\n  errors.push('status must be one of: pending, in_progress, resolved, closed');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errorCode: errors.length > 0 ? errorCode : null,\n    errors,\n    tenant_id,\n    id,\n    type,\n    status,\n    notes\n  }\n}];"
+      },
+      "id": "r4a00003-0004-0004-0004-000000000003",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1248, 64]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "r4a00004-0004-0004-0004-000000000004",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1040, 64]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "norm-id",
+              "name": "id",
+              "value": "={{ $('Validate').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $('Validate').item.json.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-type",
+              "name": "type",
+              "value": "={{ $('Validate').item.json.type }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-status",
+              "name": "status",
+              "value": "={{ $('Validate').item.json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-notes",
+              "name": "notes",
+              "value": "={{ $('Validate').item.json.notes }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "r4a00005-0004-0004-0004-000000000005",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-816, 64]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from public.request_update($1, $2, $3, $4, $5);",
+        "options": {
+          "queryReplacement": "={{ [$json.tenant_id, $json.id, $json.type, $json.status, $json.notes] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-592, 64],
+      "id": "r4a00006-0004-0004-0004-000000000006",
+      "name": "DB UPDATE",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-rows-affected",
+              "leftValue": "={{ ($json.id || $json[0]?.id) ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-368, 64],
+      "id": "r4a00007-0004-0004-0004-000000000007",
+      "name": "Rows Affected?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-updated",
+              "name": "updated",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "resp-id",
+              "name": "id",
+              "value": "={{ $json.id || $json[0]?.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "r4a00008-0004-0004-0004-000000000008",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-144, -48]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, data: { id: $json.id, updated: $json.updated } } }}",
+        "options": {}
+      },
+      "id": "r4a00009-0004-0004-0004-000000000009",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [80, -48]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: $json.errorCode || 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "r4a00010-0004-0004-0004-000000000010",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1040, 288]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Request not found for this tenant' } } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "r4a00011-0004-0004-0004-000000000011",
+      "name": "Respond Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-368, 192]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
+    },
+    "Set Fields": {
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
+    },
+    "Validate": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "Normalize Input", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalize Input": {
+      "main": [[{ "node": "DB UPDATE", "type": "main", "index": 0 }]]
+    },
+    "DB UPDATE": {
+      "main": [[{ "node": "Rows Affected?", "type": "main", "index": 0 }]]
+    },
+    "Rows Affected?": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }],
+        [{ "node": "Respond Not Found", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "r4000001-0000-0000-0000-000000000004",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
+  },
+  "id": "RequestsUpdateWorkflow01",
+  "tags": [
+    {
+      "updatedAt": "2026-03-26T00:00:00.000Z",
+      "createdAt": "2026-03-26T00:00:00.000Z",
+      "id": "requests-service-tag",
+      "name": "requests-service"
+    }
+  ]
+}
