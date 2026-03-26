@@ -45,7 +45,24 @@
       "Bash(echo \"SYNTAX OK: $f\")",
       "Bash(echo \"SYNTAX FAIL: $f\")",
       "Bash(npx jest:*)",
-      "Bash(grep -r require.*config C:Usershendrclaude-ai-voice-agenttest-engine-v2services --include=*.test.js -l)"
+      "Bash(grep -r require.*config C:Usershendrclaude-ai-voice-agenttest-engine-v2services --include=*.test.js -l)",
+      "mcp__n8n-mcp__n8n_health_check",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); n8n=d.get\\(''''mcpServers'''',{}\\).get\\(''''n8n'''',{}\\); env=n8n.get\\(''''env'''',{}\\); print\\(''''URL:'''', env.get\\(''''N8N_API_URL'''',''''not set''''\\)\\); print\\(''''KEY:'''', env.get\\(''''N8N_API_KEY'''',''''not set''''\\)[:20] + ''''...'''' if env.get\\(''''N8N_API_KEY''''\\) else ''''not set''''\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); mcps=d.get\\(''''mcpServers'''',{}\\); [print\\(k,'''':'''', json.dumps\\(v, indent=2\\)\\) for k,v in mcps.items\\(\\) if ''''n8n'''' in k.lower\\(\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); mcps=d.get\\(''''mcpServers'''',{}\\); [print\\(k,'''':'''', json.dumps\\(v, indent=2\\)\\) for k,v in mcps.items\\(\\)]\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\(''C:/Users/hendr/.claude/settings.local.json''\\)\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "Bash(python:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File deploy.ps1)",
+      "Bash(ssh:*)",
+      "Bash(N8N_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI curl -s -H 'Authorization: Bearer $N8N_KEY' https://staging.am-gastro-intelligence-gmbh.de/api/v1/workflows?limit=100 2)",
+      "Bash(1 cat:*)",
+      "Bash(N8N_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI\")",
+      "Bash(WF_ID=\"DFNTfe6n054Jf1BV\")",
+      "Bash(N8N_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI\" WF_ID=\"DFNTfe6n054Jf1BV\" __NEW_LINE_436012eed2c60c5c__ scp -i \"$USERPROFILE/.ssh/id_ed25519_hetzner\" \"C:/Users/hendr/claude-ai-voice-agent/customer/_customer_update_stripped.json\" \"deploy@46.225.102.88:/tmp/cust_update_stripped.json\")",
+      "Bash(ssh -i \"$USERPROFILE/.ssh/id_ed25519_hetzner\" deploy@46.225.102.88 \"curl -s -X PUT   -H ''''X-N8N-API-KEY: $N8N_KEY''''   -H ''''Content-Type: application/json''''   -d @/tmp/cust_update_stripped.json   ''''http://172.18.0.4:5678/api/v1/workflows/$WF_ID'''' 2>&1\")",
+      "Bash(N8N_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI WF_ID=DFNTfe6n054Jf1BV __NEW_LINE_dfd9987341fb3190__ node -e \":*)",
+      "Bash(ssh -i $USERPROFILE/.ssh/id_ed25519_hetzner deploy@46.225.102.88 \"curl -s -X PUT   -H ''''X-N8N-API-KEY: $N8N_KEY''''   -H ''''Content-Type: application/json''''   -d @/tmp/cust_update_stripped.json   ''''http://172.18.0.4:5678/api/v1/workflows/$WF_ID'''' 2>&1\")",
+      "Bash(N8N_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI WF_ID=DFNTfe6n054Jf1BV __NEW_LINE_f36854bdef965d78__ node -e \":*)"
     ]
   }
 }

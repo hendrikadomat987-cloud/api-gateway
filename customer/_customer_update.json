@@ -146,6 +146,36 @@
     {
       "parameters": {
         "operation": "executeQuery",
+        "query": "SELECT * FROM public.customer_get_by_id($1, $2);",
+        "options": {
+          "queryReplacement": "={{ [$json.tenant_id, $json.id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-592, -80],
+      "id": "d2e3f4a5-b6c7-8901-efab-202020202020",
+      "name": "DB Fetch Existing",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingItems = $('DB Fetch Existing').all();\nconst existing = existingItems.length > 0 ? existingItems[0].json : {};\nconst incoming = $('Normalize Input').first().json;\n\nreturn [{\n  json: {\n    tenant_id: incoming.tenant_id,\n    id:        incoming.id,\n    name:      incoming.name  !== null ? incoming.name  : (existing.name  ?? null),\n    phone:     incoming.phone !== null ? incoming.phone : (existing.phone ?? null),\n    email:     incoming.email !== null ? incoming.email : (existing.email ?? null)\n  }\n}];"
+      },
+      "id": "e3f4a5b6-c7d8-9012-fabc-303030303030",
+      "name": "Merge Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-368, -80]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
         "query": "select * from public.customer_update($1, $2, $3, $4, $5);",
         "options": {
           "queryReplacement": "={{ [$json.tenant_id, $json.id, $json.name, $json.phone, $json.email] }}"
@@ -153,7 +183,7 @@
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [-592, 64],
+      "position": [-144, -80],
       "id": "c8a9badb-ecfd-4567-bcde-888888888888",
       "name": "DB UPDATE",
       "credentials": {
@@ -190,7 +220,7 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [-368, 64],
+      "position": [80, -80],
       "id": "c9aabbdc-edfe-5678-cdef-999999999999",
       "name": "Rows Affected?"
     },
@@ -224,19 +254,19 @@
       "name": "Format Response",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-144, -48]
+      "position": [304, -192]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: true, data: { id: $json.id, updated: $json.updated } } }}",
+        "responseBody": "={{ { success: true, data: $('DB UPDATE').item.json } }}",
         "options": {}
       },
       "id": "cbbccdde-ffaa-7890-efab-bbbbbbbbbbbb",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [80, -48]
+      "position": [528, -192]
     },
     {
       "parameters": {
@@ -264,7 +294,7 @@
       "name": "Respond Not Found",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [-368, 192]
+      "position": [80, 128]
     }
   ],
   "pinData": {},
@@ -285,6 +315,12 @@
       ]
     },
     "Normalize Input": {
+      "main": [[{ "node": "DB Fetch Existing", "type": "main", "index": 0 }]]
+    },
+    "DB Fetch Existing": {
+      "main": [[{ "node": "Merge Updates", "type": "main", "index": 0 }]]
+    },
+    "Merge Updates": {
       "main": [[{ "node": "DB UPDATE", "type": "main", "index": 0 }]]
     },
     "DB UPDATE": {
@@ -306,7 +342,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "a1b2c3d4-e5f6-7890-abcd-update000005",
+  "versionId": "a1b2c3d4-e5f6-7890-abcd-update000006",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
