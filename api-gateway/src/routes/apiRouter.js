@@ -446,6 +446,390 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
+  // ── availability — POST validation ──────────────────────────────────────────
+  if (req.method === 'POST' && service === 'availability') {
+    // Whitelist: strip every field the client is not allowed to set.
+    // tenant_id is excluded — forwardRequest re-injects it from req.tenant_id.
+    const { customer_id, day_of_week, start_time, end_time, status } = req.body || {};
+    req.body = {};
+    if (customer_id !== undefined) req.body.customer_id = typeof customer_id === 'string' ? customer_id.trim() : customer_id;
+    if (day_of_week  !== undefined) req.body.day_of_week = Number(day_of_week);
+    if (start_time   !== undefined) req.body.start_time  = typeof start_time === 'string' ? start_time.trim() : start_time;
+    if (end_time     !== undefined) req.body.end_time    = typeof end_time === 'string' ? end_time.trim() : end_time;
+    if (status       !== undefined) req.body.status      = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    // customer_id — required, must be a valid UUID
+    if (!req.body.customer_id) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id is required' },
+      });
+    }
+    if (!UUID_RE.test(req.body.customer_id)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id must be a valid UUID' },
+      });
+    }
+
+    // day_of_week — required, integer 0–6
+    if (req.body.day_of_week === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'day_of_week is required' },
+      });
+    }
+    if (!Number.isInteger(req.body.day_of_week) || req.body.day_of_week < 0 || req.body.day_of_week > 6) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'day_of_week must be an integer between 0 and 6' },
+      });
+    }
+
+    // start_time — required, HH:MM format
+    if (!req.body.start_time) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'start_time is required' },
+      });
+    }
+    if (!/^\d{2}:\d{2}$/.test(req.body.start_time)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'start_time must be in HH:MM format' },
+      });
+    }
+
+    // end_time — required, HH:MM format
+    if (!req.body.end_time) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'end_time is required' },
+      });
+    }
+    if (!/^\d{2}:\d{2}$/.test(req.body.end_time)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'end_time must be in HH:MM format' },
+      });
+    }
+
+    // status — optional, must be one of the allowed values when provided
+    const VALID_AVAILABILITY_STATUSES = ['active', 'inactive', 'blocked'];
+    if (req.body.status !== undefined && !VALID_AVAILABILITY_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: active, inactive, blocked' },
+      });
+    }
+  }
+
+  // ── availability — PUT validation ─────────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'availability') {
+    // Whitelist: customer_id cannot be changed. tenant_id excluded.
+    const { day_of_week, start_time, end_time, status } = req.body || {};
+    req.body = {};
+    if (day_of_week !== undefined) req.body.day_of_week = Number(day_of_week);
+    if (start_time  !== undefined) req.body.start_time  = typeof start_time === 'string' ? start_time.trim() : start_time;
+    if (end_time    !== undefined) req.body.end_time    = typeof end_time === 'string' ? end_time.trim() : end_time;
+    if (status      !== undefined) req.body.status      = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    // At least one updatable field must be present
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of day_of_week, start_time, end_time, or status is required',
+        },
+      });
+    }
+
+    // day_of_week range check when provided
+    if (req.body.day_of_week !== undefined) {
+      if (!Number.isInteger(req.body.day_of_week) || req.body.day_of_week < 0 || req.body.day_of_week > 6) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'day_of_week must be an integer between 0 and 6' },
+        });
+      }
+    }
+
+    // start_time format when provided
+    if (req.body.start_time !== undefined && !/^\d{2}:\d{2}$/.test(req.body.start_time)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'start_time must be in HH:MM format' },
+      });
+    }
+
+    // end_time format when provided
+    if (req.body.end_time !== undefined && !/^\d{2}:\d{2}$/.test(req.body.end_time)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'end_time must be in HH:MM format' },
+      });
+    }
+
+    // status when provided
+    const VALID_AVAILABILITY_STATUSES = ['active', 'inactive', 'blocked'];
+    if (req.body.status !== undefined && !VALID_AVAILABILITY_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: active, inactive, blocked' },
+      });
+    }
+  }
+
+  // ── notifications — POST validation ──────────────────────────────────────────
+  if (req.method === 'POST' && service === 'notifications') {
+    // Whitelist: strip every field the client is not allowed to set.
+    // tenant_id is excluded — forwardRequest re-injects it from req.tenant_id.
+    const { customer_id, channel, type, message, status } = req.body || {};
+    req.body = {};
+    if (customer_id !== undefined) req.body.customer_id = typeof customer_id === 'string' ? customer_id.trim() : customer_id;
+    if (channel     !== undefined) req.body.channel     = typeof channel === 'string' ? channel.trim().toLowerCase() : channel;
+    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (message     !== undefined) req.body.message     = typeof message === 'string' ? message.trim() : message;
+    if (status      !== undefined) req.body.status      = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    // customer_id — required, must be a valid UUID
+    if (!req.body.customer_id) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id is required' },
+      });
+    }
+    if (!UUID_RE.test(req.body.customer_id)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'customer_id must be a valid UUID' },
+      });
+    }
+
+    // channel — required, must be one of the allowed values
+    const VALID_CHANNELS = ['email', 'sms', 'push'];
+    if (!req.body.channel) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'channel is required' },
+      });
+    }
+    if (!VALID_CHANNELS.includes(req.body.channel)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'channel must be one of: email, sms, push' },
+      });
+    }
+
+    // type — required, must be one of the allowed values
+    const VALID_NOTIFICATION_TYPES = ['reminder', 'confirmation', 'cancellation', 'update'];
+    if (!req.body.type) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type is required' },
+      });
+    }
+    if (!VALID_NOTIFICATION_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: reminder, confirmation, cancellation, update' },
+      });
+    }
+
+    // status — optional, must be one of the allowed values when provided
+    const VALID_NOTIFICATION_STATUSES = ['pending', 'sent', 'failed'];
+    if (req.body.status !== undefined && !VALID_NOTIFICATION_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: pending, sent, failed' },
+      });
+    }
+  }
+
+  // ── notifications — PUT validation ────────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'notifications') {
+    // Whitelist: customer_id cannot be changed. tenant_id excluded.
+    const { channel, type, message, status } = req.body || {};
+    req.body = {};
+    if (channel !== undefined) req.body.channel = typeof channel === 'string' ? channel.trim().toLowerCase() : channel;
+    if (type    !== undefined) req.body.type    = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (message !== undefined) req.body.message = typeof message === 'string' ? message.trim() : message;
+    if (status  !== undefined) req.body.status  = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    // At least one updatable field must be present
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of channel, type, message, or status is required',
+        },
+      });
+    }
+
+    // channel — must be one of the allowed values when provided
+    const VALID_CHANNELS = ['email', 'sms', 'push'];
+    if (req.body.channel !== undefined && !VALID_CHANNELS.includes(req.body.channel)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'channel must be one of: email, sms, push' },
+      });
+    }
+
+    // type — must be one of the allowed values when provided
+    const VALID_NOTIFICATION_TYPES = ['reminder', 'confirmation', 'cancellation', 'update'];
+    if (req.body.type !== undefined && !VALID_NOTIFICATION_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: reminder, confirmation, cancellation, update' },
+      });
+    }
+
+    // status — must be one of the allowed values when provided
+    const VALID_NOTIFICATION_STATUSES = ['pending', 'sent', 'failed'];
+    if (req.body.status !== undefined && !VALID_NOTIFICATION_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: pending, sent, failed' },
+      });
+    }
+  }
+
+  // ── status — POST validation ────────────────────────────────────────────────
+  if (req.method === 'POST' && service === 'status') {
+    const { name, type, value, description } = req.body || {};
+    req.body = {};
+    if (name        !== undefined) req.body.name        = typeof name === 'string' ? name.trim() : name;
+    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (value       !== undefined) req.body.value       = typeof value === 'string' ? value.trim().toLowerCase() : value;
+    if (description !== undefined) req.body.description = typeof description === 'string' ? description.trim() : description;
+
+    if (!req.body.name || req.body.name === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'name is required' },
+      });
+    }
+    const VALID_STATUS_TYPES = ['agent', 'service', 'system', 'resource'];
+    if (!req.body.type) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type is required' },
+      });
+    }
+    if (!VALID_STATUS_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: agent, service, system, resource' },
+      });
+    }
+    const VALID_STATUS_VALUES = ['online', 'offline', 'busy', 'available', 'unknown'];
+    if (req.body.value !== undefined && !VALID_STATUS_VALUES.includes(req.body.value)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'value must be one of: online, offline, busy, available, unknown' },
+      });
+    }
+  }
+
+  // ── status — PUT validation ──────────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'status') {
+    const { name, type, value, description } = req.body || {};
+    req.body = {};
+    if (name        !== undefined) req.body.name        = typeof name === 'string' ? name.trim() : name;
+    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (value       !== undefined) req.body.value       = typeof value === 'string' ? value.trim().toLowerCase() : value;
+    if (description !== undefined) req.body.description = typeof description === 'string' ? description.trim() : description;
+
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of name, type, value, or description is required',
+        },
+      });
+    }
+    const VALID_STATUS_TYPES = ['agent', 'service', 'system', 'resource'];
+    if (req.body.type !== undefined && !VALID_STATUS_TYPES.includes(req.body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'type must be one of: agent, service, system, resource' },
+      });
+    }
+    const VALID_STATUS_VALUES = ['online', 'offline', 'busy', 'available', 'unknown'];
+    if (req.body.value !== undefined && !VALID_STATUS_VALUES.includes(req.body.value)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'value must be one of: online, offline, busy, available, unknown' },
+      });
+    }
+  }
+
+  // ── knowledge — POST validation ──────────────────────────────────────────
+  if (req.method === 'POST' && service === 'knowledge') {
+    const { title, content, category, status } = req.body || {};
+    req.body = {};
+    if (title    !== undefined) req.body.title    = typeof title === 'string' ? title.trim() : title;
+    if (content  !== undefined) req.body.content  = typeof content === 'string' ? content.trim() : content;
+    if (category !== undefined) req.body.category = typeof category === 'string' ? category.trim() : category;
+    if (status   !== undefined) req.body.status   = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    if (!req.body.title || req.body.title === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'title is required' },
+      });
+    }
+    if (!req.body.content || req.body.content === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'content is required' },
+      });
+    }
+    const VALID_KNOWLEDGE_STATUSES = ['draft', 'published', 'archived'];
+    if (req.body.status !== undefined && !VALID_KNOWLEDGE_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: draft, published, archived' },
+      });
+    }
+  }
+
+  // ── knowledge — PUT validation ───────────────────────────────────────────
+  if (req.method === 'PUT' && service === 'knowledge') {
+    const { title, content, category, status } = req.body || {};
+    req.body = {};
+    if (title    !== undefined) req.body.title    = typeof title === 'string' ? title.trim() : title;
+    if (content  !== undefined) req.body.content  = typeof content === 'string' ? content.trim() : content;
+    if (category !== undefined) req.body.category = typeof category === 'string' ? category.trim() : category;
+    if (status   !== undefined) req.body.status   = typeof status === 'string' ? status.trim().toLowerCase() : status;
+
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one of title, content, category, or status is required',
+        },
+      });
+    }
+    const VALID_KNOWLEDGE_STATUSES = ['draft', 'published', 'archived'];
+    if (req.body.status !== undefined && !VALID_KNOWLEDGE_STATUSES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'status must be one of: draft, published, archived' },
+      });
+    }
+    if (req.body.title !== undefined && req.body.title.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'title cannot be empty' },
+      });
+    }
+  }
+
   // Resolve method + id → concrete n8n webhook URL
   // Returns null when the service exists but has no webhook for this method/id combo
   const resolved = serviceMap.resolve(service, req.method, Boolean(id), id || null);

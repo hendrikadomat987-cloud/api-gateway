@@ -75,8 +75,35 @@ const config = {
       PUT_ID:    'resources/update',      // PUT    /api/v1/resources/:id
       DELETE_ID: 'resources/delete',      // DELETE /api/v1/resources/:id
     },
+    availability: {
+      POST:      'availability/create',   // POST   /api/v1/availability
+      GET:       'availability/list',     // GET    /api/v1/availability
+      GET_ID:    'availability/get',      // GET    /api/v1/availability/:id
+      PUT_ID:    'availability/update',   // PUT    /api/v1/availability/:id
+      DELETE_ID: 'availability/delete',   // DELETE /api/v1/availability/:id
+    },
+    notifications: {
+      POST:      'notifications/create',  // POST   /api/v1/notifications
+      GET:       'notifications/list',    // GET    /api/v1/notifications
+      GET_ID:    'notifications/get',     // GET    /api/v1/notifications/:id
+      PUT_ID:    'notifications/update',  // PUT    /api/v1/notifications/:id
+      DELETE_ID: 'notifications/delete',  // DELETE /api/v1/notifications/:id
+    },
+    status: {
+      POST:      'status/create',         // POST   /api/v1/status
+      GET:       'status/list',           // GET    /api/v1/status
+      GET_ID:    'status/get',            // GET    /api/v1/status/:id
+      PUT_ID:    'status/update',         // PUT    /api/v1/status/:id
+      DELETE_ID: 'status/delete',         // DELETE /api/v1/status/:id
+    },
+    knowledge: {
+      POST:      'knowledge/create',      // POST   /api/v1/knowledge
+      GET:       'knowledge/list',        // GET    /api/v1/knowledge
+      GET_ID:    'knowledge/get',         // GET    /api/v1/knowledge/:id
+      PUT_ID:    'knowledge/update',      // PUT    /api/v1/knowledge/:id
+      DELETE_ID: 'knowledge/delete',      // DELETE /api/v1/knowledge/:id
+    },
     appointment:  'appointment_service',   // legacy — preserved for backward compatibility
-    availability: 'availability_service',
     request:      'request_service',
   },
 };

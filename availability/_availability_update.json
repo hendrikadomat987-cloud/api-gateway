@@ -1,0 +1,360 @@
+{
+  "name": "/availability/update",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "availability/update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c0090001-0000-0000-0000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1648, 64],
+      "webhookId": "availability-update-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-id",
+              "name": "id",
+              "value": "={{ $json.query.id }}",
+              "type": "string"
+            },
+            {
+              "id": "field-day-of-week",
+              "name": "day_of_week",
+              "value": "={{ $json.body.day_of_week !== undefined ? $json.body.day_of_week : null }}",
+              "type": "number"
+            },
+            {
+              "id": "field-start-time",
+              "name": "start_time",
+              "value": "={{ $json.body.start_time ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "field-end-time",
+              "name": "end_time",
+              "value": "={{ $json.body.end_time ?? null }}",
+              "type": "string"
+            },
+            {
+              "id": "field-status",
+              "name": "status",
+              "value": "={{ $json.body.status ?? null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0090002-0000-0000-0000-000000000002",
+      "name": "Set Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1456, 64]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tenant_id   = ($json.tenant_id || '').trim();\nconst id          = ($json.id || '').trim();\nconst day_of_week = ($json.day_of_week !== null && $json.day_of_week !== undefined) ? Number($json.day_of_week) : null;\nconst start_time  = $json.start_time ? ($json.start_time + '').trim() : null;\nconst end_time    = $json.end_time   ? ($json.end_time   + '').trim() : null;\nconst status      = $json.status     ? ($json.status     + '').trim().toLowerCase() : null;\n\nconst errors = [];\nlet errorCode = 'VALIDATION_ERROR';\nconst UUID_RE        = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst TIME_RE        = /^\\d{2}:\\d{2}$/;\nconst VALID_STATUSES = ['active','inactive','blocked'];\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) {\n  errors.push('id is required');\n  errorCode = 'MISSING_ID';\n} else if (!UUID_RE.test(id)) {\n  errors.push('id must be a valid UUID');\n  errorCode = 'INVALID_ID';\n}\n\nif (day_of_week === null && start_time === null && end_time === null && status === null) {\n  errors.push('at least one of day_of_week, start_time, end_time, or status is required');\n}\n\nif (day_of_week !== null && (!Number.isInteger(day_of_week) || day_of_week < 0 || day_of_week > 6)) {\n  errors.push('day_of_week must be an integer between 0 and 6');\n}\n\nif (start_time !== null && !TIME_RE.test(start_time)) {\n  errors.push('start_time must be in HH:MM format');\n}\n\nif (end_time !== null && !TIME_RE.test(end_time)) {\n  errors.push('end_time must be in HH:MM format');\n}\n\nif (status !== null && !VALID_STATUSES.includes(status)) {\n  errors.push('status must be one of: active, inactive, blocked');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errorCode: errors.length > 0 ? errorCode : null,\n    errors,\n    tenant_id,\n    id,\n    day_of_week,\n    start_time,\n    end_time,\n    status\n  }\n}];"
+      },
+      "id": "c0090003-0000-0000-0000-000000000003",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1248, 64]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c0090004-0000-0000-0000-000000000004",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1040, 64]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "norm-id",
+              "name": "id",
+              "value": "={{ $('Validate').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $('Validate').item.json.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-day-of-week",
+              "name": "day_of_week",
+              "value": "={{ $('Validate').item.json.day_of_week }}",
+              "type": "number"
+            },
+            {
+              "id": "norm-start-time",
+              "name": "start_time",
+              "value": "={{ $('Validate').item.json.start_time }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-end-time",
+              "name": "end_time",
+              "value": "={{ $('Validate').item.json.end_time }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-status",
+              "name": "status",
+              "value": "={{ $('Validate').item.json.status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0090005-0000-0000-0000-000000000005",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-816, 64]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from public.availability_update($1, $2, $3, $4, $5, $6);",
+        "options": {
+          "queryReplacement": "={{ [$json.tenant_id, $json.id, $json.day_of_week, $json.start_time, $json.end_time, $json.status] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-592, 64],
+      "id": "c0090006-0000-0000-0000-000000000006",
+      "name": "DB UPDATE",
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-rows-affected",
+              "leftValue": "={{ ($json.id || $json[0]?.id) ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-368, 64],
+      "id": "c0090007-0000-0000-0000-000000000007",
+      "name": "Rows Affected?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-updated",
+              "name": "updated",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "resp-id",
+              "name": "id",
+              "value": "={{ $json.id || $json[0]?.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0090008-0000-0000-0000-000000000008",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-144, -48]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, data: { id: $json.id, updated: $json.updated } } }}",
+        "options": {}
+      },
+      "id": "c0090009-0000-0000-0000-000000000009",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [80, -48]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json.error && ($json.error.message || String($json.error))) || 'Database error';\nconst lower = raw.toLowerCase();\n\nlet code    = 'DB_ERROR';\nlet message = raw;\n\nif (lower.includes('invalid_day_of_week') || lower.includes('invalid day')) {\n  code    = 'VALIDATION_ERROR';\n  message = 'day_of_week must be an integer between 0 and 6';\n} else if (lower.includes('invalid_status') || lower.includes('invalid status')) {\n  code    = 'VALIDATION_ERROR';\n  message = 'status must be one of: active, inactive, blocked';\n}\n\nreturn [{ json: { code, message } }];"
+      },
+      "id": "c0090012-0000-0000-0000-000000000012",
+      "name": "Parse DB Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-368, 352]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: $json.code, message: $json.message } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c0090013-0000-0000-0000-000000000013",
+      "name": "Respond DB Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-144, 352]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: $json.errorCode || 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c0090010-0000-0000-0000-000000000010",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1040, 288]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Availability record not found for this tenant' } } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "c0090011-0000-0000-0000-000000000011",
+      "name": "Respond Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-368, 192]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
+    },
+    "Set Fields": {
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
+    },
+    "Validate": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "Normalize Input", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalize Input": {
+      "main": [[{ "node": "DB UPDATE", "type": "main", "index": 0 }]]
+    },
+    "DB UPDATE": {
+      "main": [
+        [{ "node": "Rows Affected?", "type": "main", "index": 0 }],
+        [{ "node": "Parse DB Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse DB Error": {
+      "main": [[{ "node": "Respond DB Error", "type": "main", "index": 0 }]]
+    },
+    "Rows Affected?": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }],
+        [{ "node": "Respond Not Found", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c0090000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
+  },
+  "id": "AvailabilityUpdateWorkflow01",
+  "tags": [
+    {
+      "updatedAt": "2026-03-27T00:00:00.000Z",
+      "createdAt": "2026-03-27T00:00:00.000Z",
+      "id": "availability-service-tag",
+      "name": "availability-service"
+    }
+  ]
+}

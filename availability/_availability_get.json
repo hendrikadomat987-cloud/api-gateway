@@ -1,0 +1,250 @@
+{
+  "name": "/availability/get",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "availability/get",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c0080001-0000-0000-0000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1520, 240],
+      "webhookId": "availability-get-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-tenant-id",
+              "name": "tenant_id",
+              "value": "={{ $json.headers['x-tenant-id'] || $json.headers['X-Tenant-Id'] || $json.headers['x-organization-id'] || $json.headers['X-Organization-Id'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-id",
+              "name": "id",
+              "value": "={{ $json.query.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0080002-0000-0000-0000-000000000002",
+      "name": "Set Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1344, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tenant_id = ($json.tenant_id || '').trim();\nconst id = ($json.id || '').trim();\nconst errors = [];\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\nif (!tenant_id) errors.push('tenant_id is required');\nelse if (!UUID_RE.test(tenant_id)) errors.push('tenant_id must be a valid UUID');\n\nif (!id) errors.push('id is required');\nelse if (!UUID_RE.test(id)) errors.push('id must be a valid UUID');\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    tenant_id,\n    id\n  }\n}];"
+      },
+      "id": "c0080003-0000-0000-0000-000000000003",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1152, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c0080004-0000-0000-0000-000000000004",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-960, 240]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from public.availability_get_by_id($1, $2);",
+        "options": {
+          "queryReplacement": "={{ [$('Validate').item.json.tenant_id, $('Validate').item.json.id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-640, 160],
+      "id": "c0080005-0000-0000-0000-000000000005",
+      "name": "DB Get",
+      "credentials": {
+        "postgres": {
+          "id": "Enm2PEWvhVMtE5CI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-empty",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-400, 160],
+      "id": "c0080006-0000-0000-0000-000000000006",
+      "name": "Record found?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-success",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "resp-data",
+              "name": "data",
+              "value": "={{ $input.first().json }}",
+              "type": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0080007-0000-0000-0000-000000000007",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 256]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: $json.success, data: $json.data } }}",
+        "options": {}
+      },
+      "id": "c0080008-0000-0000-0000-000000000008",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [64, 256]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: 'VALIDATION_ERROR', message: $json.errors && $json.errors.length ? $json.errors.join(', ') : 'Validation failed' } } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c0080009-0000-0000-0000-000000000009",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-720, 432]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Availability record not found' } } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "c0080010-0000-0000-0000-000000000010",
+      "name": "Respond Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-160, 64]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
+    },
+    "Set Fields": {
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
+    },
+    "Validate": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "DB Get", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "DB Get": {
+      "main": [[{ "node": "Record found?", "type": "main", "index": 0 }]]
+    },
+    "Record found?": {
+      "main": [
+        [{ "node": "Respond Not Found", "type": "main", "index": 0 }],
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c0080000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db1ba70da077bf2f51c02e462bdc48ed00c6c6a054efdcca5792cc2a2fbe8c64"
+  },
+  "id": "AvailabilityGetWorkflow01",
+  "tags": [
+    {
+      "updatedAt": "2026-03-27T00:00:00.000Z",
+      "createdAt": "2026-03-27T00:00:00.000Z",
+      "id": "availability-service-tag",
+      "name": "availability-service"
+    }
+  ]
+}
