@@ -176,7 +176,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await cleanupContext(ctx);   // deletes in FK-safe order: requests → resources → customers
+  await cleanupContext(ctx);   // deletes in FK-safe order: requests → appointments → resources → customers
 });
 ```
 
@@ -190,16 +190,76 @@ await cleanupContext(ctx, { client: clientA });
 
 ---
 
+## Supported test types
+
+The engine officially supports four test types.  Every service area should cover all
+types that apply to it:
+
+| Test type | File suffix | Purpose |
+|-----------|-------------|---------|
+| CRUD | `.crud.test.js` | Create / Read / Update / Delete lifecycle |
+| Gateway / Auth / Input Validation | `.gateway.test.js` | JWT enforcement, UUID validation, input sanitisation, tenant injection guard |
+| RLS / Tenant Isolation | `.rls.test.js` | Cross-tenant access denied; Tenant A data stays intact |
+| **Calculation / Engine Logic** | **`.calculation.test.js`** | **Result correctness of backend calculation services** |
+
+The Calculation type covers assertions such as: free-slot derivation, overlap/buffer
+blocking, exception-day handling, next-free logic, and structured day-view responses.
+Helper assertions (`expectFreeSlotsArray`, `expectBookableTrue`, `expectDayViewShape`, …)
+and data factories (`slotQueryFactory`, `dayViewFactory`, …) are available in
+`core/assertions.js` and `core/factories.js`.
+
+---
+
+## availability-engine scaffold
+
+The directory `services/availability-engine/` is a prepared scaffold for a future
+calculation service.  It exists so the test architecture is ready the moment the
+service is deployed.
+
+```
+services/availability-engine/
+├── availability-engine.gateway.test.js      # Auth + input-validation tests
+├── availability-engine.rls.test.js          # Tenant isolation tests
+└── availability-engine.calculation.test.js  # Calculation / Engine Logic tests
+```
+
+### Running the scaffold
+
+```bash
+npm run test:availability-engine
+# or with summary:
+npm run test:summary:availability-engine
+```
+
+### Scaffold status: all tests are pending (describe.skip)
+
+All three files use `describe.skip(…)` so Jest registers each test as **pending**
+rather than executing it against a non-existent endpoint.  Running the scaffold suite
+produces 0 failures — the tests show as skipped in Jest output.
+
+### Activating the scaffold
+
+When the availability-engine service is deployed:
+
+1. Replace every `describe.skip` with `describe` in the three files above.
+2. Implement the `beforeAll` setup blocks (create working-hours, appointments, blocks).
+3. Fill in concrete `resource_id` values obtained from the setup.
+4. Verify the `ENDPOINTS` constants match the real service paths.
+5. Add cleanup routes for any new resource types to `core/cleanup.js` `ROUTES`.
+
+---
+
 ## Adding a new service
 
-1. Create `services/<service-name>/` with three test files:
+1. Create `services/<service-name>/` with the applicable test files:
    - `<service>.crud.test.js` — CRUD lifecycle
    - `<service>.gateway.test.js` — JWT enforcement, UUID validation, input sanitisation
    - `<service>.rls.test.js` — Cross-tenant isolation (tenantA creates, tenantB attacks)
+   - `<service>.calculation.test.js` — if the service exposes calculation/query endpoints
 
 2. Add a route to `core/cleanup.js` `ROUTES` map if the service has its own DELETE endpoint.
 
-3. Add a factory to `core/factories.js`.
+3. Add factories to `core/factories.js`.
 
 4. Add an npm script to `package.json` if desired:
    ```json
@@ -218,3 +278,5 @@ await cleanupContext(ctx, { client: clientA });
 - [x] `TestContext.reset()` available for multi-phase tests
 - [x] Connectivity pre-flight check (warns, does not crash)
 - [x] CI mode: `--ci` or `npm run test:ci`
+- [x] Calculation / Engine Logic as official fourth test type
+- [x] availability-engine scaffold prepared (pending, 0 failures)

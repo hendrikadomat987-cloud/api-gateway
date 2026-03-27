@@ -1,0 +1,59 @@
+{
+  "name": "availability-engine — day-view",
+  "active": false,
+  "nodes": [
+    {
+      "id": "ae-day-view-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ae-day-view-webhook-id",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "availability-engine/day-view",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "ae-day-view-code",
+      "name": "Build Day View",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── availability-engine / day-view ───────────────────────────────────────────\n// Input: POST body with customer_id, date (YYYY-MM-DD), duration_minutes, timezone\n// tenant_id comes from x-tenant-id header (injected by the API Gateway from JWT).\n// Algorithm:\n//   1. Load working hours, busy periods, and day exceptions in parallel\n//   2. Resolve effective working windows for the requested date (exceptions override)\n//   3. Project busy windows onto the day, expand with buffers\n//   4. Slice free slots from working windows minus busy windows\n//   5. Return {\n//        success: true,\n//        data: {\n//          date,\n//          is_closed,\n//          working_windows: [{ start, end }],\n//          busy_windows:    [{ start, end, source }],\n//          free_slots:      [{ start, end }],\n//        }\n//      }\n\nconst SUPABASE_URL = $env.SUPABASE_URL;\nconst SUPABASE_KEY = $env.SUPABASE_SERVICE_KEY;\n\nfunction supabaseRpc(fnName, params) {\n  return $helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/rest/v1/rpc/${fnName}`,\n    headers: {\n      'apikey': SUPABASE_KEY,\n      'Authorization': `Bearer ${SUPABASE_KEY}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=representation',\n    },\n    body: JSON.stringify(params),\n  });\n}\n\n// ── Helpers ───────────────────────────────────────────────────────────────────\n\nfunction localTimeToMs(dateStr, timeStr, tz) {\n  const isoLike = `${dateStr}T${timeStr}:00`;\n  const naiveMs = new Date(isoLike + 'Z').getTime();\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: tz,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    hour12: false,\n  });\n  const parts = fmt.formatToParts(new Date(naiveMs));\n  const p = {};\n  for (const { type, value } of parts) p[type] = value;\n  const localMs = Date.UTC(\n    parseInt(p.year), parseInt(p.month) - 1, parseInt(p.day),\n    parseInt(p.hour === '24' ? '0' : p.hour), parseInt(p.minute), parseInt(p.second)\n  );\n  return naiveMs - (localMs - naiveMs);\n}\n\nfunction getDow(dateStr, tz) {\n  // Parse date at noon to avoid DST edge cases\n  const ms = localTimeToMs(dateStr, '12:00', tz);\n  const parts = new Intl.DateTimeFormat('en-US', {\n    timeZone: tz, weekday: 'short',\n  }).formatToParts(new Date(ms));\n  const day = parts.find(p => p.type === 'weekday').value;\n  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(day);\n}\n\nfunction overlapsAny(slotStartMs, slotEndMs, busyWindows) {\n  for (const b of busyWindows) {\n    if (slotStartMs < b.endMs && slotEndMs > b.startMs) return true;\n  }\n  return false;\n}\n\n// ── Main ──────────────────────────────────────────────────────────────────────\n\nconst item       = $input.first();\nconst headers    = item.json.headers || {};\nconst body       = item.json.body   || {};\nconst tenantId   = headers['x-tenant-id'];\n\nconst { customer_id, date, timezone = 'Europe/Berlin' } = body;\nconst durationMin = Number(body.duration_minutes) || 30;\nconst durationMs  = durationMin * 60 * 1000;\n\nconst dayStartMs = localTimeToMs(date, '00:00', timezone);\nconst dayEndMs   = localTimeToMs(date, '23:59', timezone) + 60000; // exclusive end\nconst dow        = getDow(date, timezone);\n\n// Fetch all needed data in parallel\nlet workingHours, busyPeriods, exceptions;\ntry {\n  [workingHours, busyPeriods, exceptions] = await Promise.all([\n    supabaseRpc('ae_get_working_hours', {\n      p_tenant_id: tenantId, p_customer_id: customer_id,\n    }),\n    supabaseRpc('ae_get_busy_periods', {\n      p_tenant_id: tenantId, p_customer_id: customer_id,\n      p_from: new Date(dayStartMs).toISOString(),\n      p_to:   new Date(dayEndMs).toISOString(),\n    }),\n    supabaseRpc('ae_get_day_exceptions', {\n      p_tenant_id:   tenantId, p_customer_id: customer_id,\n      p_from_date:   date,\n      p_to_date:     date,\n    }),\n  ]);\n} catch (err) {\n  return [{ json: { success: false, error: { code: 'DB_ERROR', message: err.message } } }];\n}\n\nconst dayExceptions = exceptions || [];\nconst isClosed = dayExceptions.some(ex => ex.is_closed);\n\nif (isClosed) {\n  return [{ json: {\n    success: true,\n    data: {\n      date,\n      is_closed: true,\n      working_windows: [],\n      busy_windows:    [],\n      free_slots:      [],\n    },\n  } }];\n}\n\n// Effective working windows for this day-of-week\nconst dayWhWindows = (workingHours || []).filter(wh => wh.day_of_week === dow);\n\nif (dayWhWindows.length === 0) {\n  return [{ json: {\n    success: true,\n    data: {\n      date,\n      is_closed: false,\n      working_windows: [],\n      busy_windows:    [],\n      free_slots:      [],\n    },\n  } }];\n}\n\n// Build working_windows output (in ISO timestamps)\nconst workingWindows = dayWhWindows.map(wh => ({\n  start: new Date(localTimeToMs(date, wh.start_time_text, timezone)).toISOString(),\n  end:   new Date(localTimeToMs(date, wh.end_time_text,   timezone)).toISOString(),\n}));\n\n// Partial exceptions (time-of-day blocks)\nconst partialExceptions = dayExceptions\n  .filter(ex => !ex.is_closed && ex.start_time_txt && ex.end_time_txt)\n  .map(ex => ({\n    startMs: localTimeToMs(date, ex.start_time_txt, timezone),\n    endMs:   localTimeToMs(date, ex.end_time_txt,   timezone),\n  }));\n\n// busy_windows from appointments + blocks (raw, for output)\nconst rawBusyWindows = (busyPeriods || []).map(b => ({\n  start:  b.start_at,\n  end:    b.end_at,\n  source: b.source,\n  startMs: new Date(b.start_at).getTime(),\n  endMs:   new Date(b.end_at).getTime(),\n}));\n\n// Add partial exceptions to busy_windows output\nconst allBusyForOutput = [\n  ...rawBusyWindows.map(b => ({ start: b.start, end: b.end, source: b.source })),\n  ...partialExceptions.map(pe => ({\n    start:  new Date(pe.startMs).toISOString(),\n    end:    new Date(pe.endMs).toISOString(),\n    source: 'exception',\n  })),\n];\n\n// Compute free slots across all working windows\nconst freeSlots = [];\n\nfor (const wh of dayWhWindows) {\n  const bufBefore = (wh.buffer_before_min || 0) * 60000;\n  const bufAfter  = (wh.buffer_after_min  || 0) * 60000;\n\n  const winStart = localTimeToMs(date, wh.start_time_text, timezone);\n  const winEnd   = localTimeToMs(date, wh.end_time_text,   timezone);\n\n  // Busy windows expanded with buffers\n  const buffered = [\n    ...rawBusyWindows.map(b => ({\n      startMs: b.startMs - bufBefore,\n      endMs:   b.endMs   + bufAfter,\n    })),\n    ...partialExceptions,\n  ];\n\n  let t = winStart;\n  while (t + durationMs <= winEnd) {\n    if (!overlapsAny(t, t + durationMs, buffered)) {\n      freeSlots.push({\n        start: new Date(t).toISOString(),\n        end:   new Date(t + durationMs).toISOString(),\n      });\n    }\n    t += durationMs;\n  }\n}\n\nreturn [{ json: {\n  success: true,\n  data: {\n    date,\n    is_closed:       false,\n    working_windows: workingWindows,\n    busy_windows:    allBusyForOutput,\n    free_slots:      freeSlots,\n  },\n} }];\n"
+      }
+    },
+    {
+      "id": "ae-day-view-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Build Day View", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Day View": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

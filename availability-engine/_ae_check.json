@@ -1,0 +1,59 @@
+{
+  "name": "availability-engine — check",
+  "active": false,
+  "nodes": [
+    {
+      "id": "ae-check-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ae-check-webhook-id",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "availability-engine/check",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "ae-check-code",
+      "name": "Check Slot Bookability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── availability-engine / check ──────────────────────────────────────────────\n// Input: POST body with customer_id, start, duration_minutes, timezone\n// tenant_id comes from x-tenant-id header (injected by the API Gateway from JWT).\n// Algorithm:\n//   1. Load working hours (ae_get_working_hours)\n//   2. Load busy periods covering the slot window (ae_get_busy_periods)\n//   3. Load day exceptions for the slot date (ae_get_day_exceptions)\n//   4. Check if slot falls within a working window and has no conflicts\n//   5. Return { success: true, data: { bookable: bool, reason: string|null } }\n\nconst SUPABASE_URL = $env.SUPABASE_URL;\nconst SUPABASE_KEY = $env.SUPABASE_SERVICE_KEY;\n\nfunction supabaseRpc(fnName, params) {\n  return $helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/rest/v1/rpc/${fnName}`,\n    headers: {\n      'apikey': SUPABASE_KEY,\n      'Authorization': `Bearer ${SUPABASE_KEY}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=representation',\n    },\n    body: JSON.stringify(params),\n  });\n}\n\n// ── Helpers ───────────────────────────────────────────────────────────────────\n\nfunction localTimeToMs(dateStr, timeStr, tz) {\n  const isoLike = `${dateStr}T${timeStr}:00`;\n  const naiveMs = new Date(isoLike + 'Z').getTime();\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: tz,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    hour12: false,\n  });\n  const parts = fmt.formatToParts(new Date(naiveMs));\n  const p = {};\n  for (const { type, value } of parts) p[type] = value;\n  const localMs = Date.UTC(\n    parseInt(p.year), parseInt(p.month) - 1, parseInt(p.day),\n    parseInt(p.hour === '24' ? '0' : p.hour), parseInt(p.minute), parseInt(p.second)\n  );\n  const offsetMs = localMs - naiveMs;\n  return naiveMs - offsetMs;\n}\n\nfunction getDow(tsMs, tz) {\n  const parts = new Intl.DateTimeFormat('en-US', {\n    timeZone: tz, weekday: 'short',\n  }).formatToParts(new Date(tsMs));\n  const day = parts.find(p => p.type === 'weekday').value;\n  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(day);\n}\n\nfunction toDateStr(tsMs, tz) {\n  return new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',\n  }).format(new Date(tsMs));\n}\n\n// ── Main ──────────────────────────────────────────────────────────────────────\n\nconst item       = $input.first();\nconst headers    = item.json.headers || {};\nconst body       = item.json.body   || {};\nconst tenantId   = headers['x-tenant-id'];\n\nconst { customer_id, start, timezone = 'Europe/Berlin' } = body;\nconst durationMin = Number(body.duration_minutes) || 30;\nconst durationMs  = durationMin * 60 * 1000;\nconst startMs     = new Date(start).getTime();\nconst endMs       = startMs + durationMs;\n\nconst dateStr = toDateStr(startMs, timezone);\nconst dow     = getDow(startMs, timezone);\n\n// Fetch data\nlet workingHours, busyPeriods, exceptions;\ntry {\n  [workingHours, busyPeriods, exceptions] = await Promise.all([\n    supabaseRpc('ae_get_working_hours', {\n      p_tenant_id: tenantId, p_customer_id: customer_id,\n    }),\n    supabaseRpc('ae_get_busy_periods', {\n      p_tenant_id: tenantId, p_customer_id: customer_id,\n      p_from: new Date(startMs).toISOString(),\n      p_to:   new Date(endMs).toISOString(),\n    }),\n    supabaseRpc('ae_get_day_exceptions', {\n      p_tenant_id:   tenantId, p_customer_id: customer_id,\n      p_from_date:   dateStr,\n      p_to_date:     dateStr,\n    }),\n  ]);\n} catch (err) {\n  return [{ json: { success: false, error: { code: 'DB_ERROR', message: err.message } } }];\n}\n\n// Check if day is closed\nconst dayExceptions = exceptions || [];\nconst isClosed = dayExceptions.some(ex => ex.is_closed);\nif (isClosed) {\n  return [{ json: { success: true, data: { bookable: false, reason: 'day_closed' } } }];\n}\n\n// Check if inside a working window for this day-of-week\nconst dayWindows = (workingHours || []).filter(wh => wh.day_of_week === dow);\nif (dayWindows.length === 0) {\n  return [{ json: { success: true, data: { bookable: false, reason: 'outside_working_hours' } } }];\n}\n\nconst insideWindow = dayWindows.some(wh => {\n  const winStart = localTimeToMs(dateStr, wh.start_time_text, timezone);\n  const winEnd   = localTimeToMs(dateStr, wh.end_time_text,   timezone);\n  return startMs >= winStart && endMs <= winEnd;\n});\n\nif (!insideWindow) {\n  return [{ json: { success: true, data: { bookable: false, reason: 'outside_working_hours' } } }];\n}\n\n// Collect applicable buffers from the matched window(s)\n// Use the first matching window's buffer values\nconst matchedWindow = dayWindows.find(wh => {\n  const winStart = localTimeToMs(dateStr, wh.start_time_text, timezone);\n  const winEnd   = localTimeToMs(dateStr, wh.end_time_text,   timezone);\n  return startMs >= winStart && endMs <= winEnd;\n});\nconst bufBefore = (matchedWindow && matchedWindow.buffer_before_min || 0) * 60000;\nconst bufAfter  = (matchedWindow && matchedWindow.buffer_after_min  || 0) * 60000;\n\n// Check partial-day exceptions (override windows with blocked time ranges)\nconst partialExceptions = dayExceptions\n  .filter(ex => !ex.is_closed && ex.start_time_txt && ex.end_time_txt)\n  .map(ex => ({\n    startMs: localTimeToMs(dateStr, ex.start_time_txt, timezone),\n    endMs:   localTimeToMs(dateStr, ex.end_time_txt,   timezone),\n  }));\n\nfor (const pe of partialExceptions) {\n  if (startMs < pe.endMs && endMs > pe.startMs) {\n    return [{ json: { success: true, data: { bookable: false, reason: 'partial_exception' } } }];\n  }\n}\n\n// Check busy periods (appointments + blocks), expanded by buffers\nconst busyWindows = (busyPeriods || []).map(b => ({\n  startMs: new Date(b.start_at).getTime() - bufBefore,\n  endMs:   new Date(b.end_at).getTime()   + bufAfter,\n}));\n\nfor (const bw of busyWindows) {\n  if (startMs < bw.endMs && endMs > bw.startMs) {\n    return [{ json: { success: true, data: { bookable: false, reason: 'conflict' } } }];\n  }\n}\n\nreturn [{ json: { success: true, data: { bookable: true, reason: null } } }];\n"
+      }
+    },
+    {
+      "id": "ae-check-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Check Slot Bookability", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Slot Bookability": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

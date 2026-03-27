@@ -1,6 +1,7 @@
 'use strict';
 
 const { Router } = require('express');
+const config         = require('../../config');
 const serviceMap     = require('../services/serviceMap');
 const { forwardRequest } = require('../utils/forwardRequest');
 const logger         = require('../utils/logger');
@@ -24,6 +25,156 @@ publicRouter.get('/services', (req, res) => {
 const protectedRouter = Router();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// ── availability-engine — dedicated operation routes ───────────────────────────
+//
+// MUST be registered BEFORE the generic /:version/:service/:id? handler so that
+// Express matches this literal path segment first.  The generic handler rejects
+// non-UUID :id values (e.g. "slots"), which would break operation-based routing.
+//
+// Only POST is accepted; auth is enforced by the preceding middleware chain.
+
+const _AE_OPERATIONS = new Set(['slots', 'check', 'next-free', 'day-view']);
+const _AE_UUID_RE    = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function _aeValidTimezone(tz) {
+  try { Intl.DateTimeFormat(undefined, { timeZone: tz }); return true; } catch { return false; }
+}
+function _aeValidDate(d) {
+  return typeof d === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(d)
+    && !isNaN(new Date(d).getTime());
+}
+function _aeErr(res, msg) {
+  return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: msg } });
+}
+
+protectedRouter.all('/:version/availability-engine/:operation', async (req, res, next) => {
+  const { version, operation } = req.params;
+
+  if (!/^v\d+$/.test(version)) {
+    return res.status(400).json({ success: false, error: { code: 'INVALID_VERSION', message: `Invalid API version "${version}". Expected format: v1, v2, …` } });
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'availability-engine operations only accept POST' } });
+  }
+
+  if (!_AE_OPERATIONS.has(operation)) {
+    return res.status(404).json({ success: false, error: { code: 'SERVICE_NOT_FOUND', message: `Unknown availability-engine operation "${operation}"` } });
+  }
+
+  // ── per-operation input whitelist + validation ────────────────────────────
+  // tenant_id is always excluded from req.body; forwardRequest injects it from JWT.
+
+  const raw = req.body || {};
+
+  if (operation === 'slots') {
+    const { customer_id, resource_id, from, to, duration_minutes, timezone } = raw;
+    req.body = {};
+    if (customer_id      !== undefined) req.body.customer_id      = customer_id;
+    if (resource_id      !== undefined) req.body.resource_id      = resource_id;
+    if (from             !== undefined) req.body.from             = from;
+    if (to               !== undefined) req.body.to               = to;
+    if (duration_minutes !== undefined) req.body.duration_minutes = Number(duration_minutes);
+    if (timezone         !== undefined) req.body.timezone         = timezone;
+
+    if (!req.body.customer_id)                                       return _aeErr(res, 'customer_id is required');
+    if (!_AE_UUID_RE.test(req.body.customer_id))                     return _aeErr(res, 'customer_id must be a valid UUID');
+    if (req.body.resource_id !== undefined && !_AE_UUID_RE.test(req.body.resource_id)) return _aeErr(res, 'resource_id must be a valid UUID');
+    if (!req.body.from)                                              return _aeErr(res, 'from is required');
+    if (isNaN(new Date(req.body.from).getTime()))                    return _aeErr(res, 'from must be a valid ISO 8601 timestamp');
+    if (!req.body.to)                                                return _aeErr(res, 'to is required');
+    if (isNaN(new Date(req.body.to).getTime()))                      return _aeErr(res, 'to must be a valid ISO 8601 timestamp');
+    if (req.body.duration_minutes === undefined) req.body.duration_minutes = 30;
+    const _dm = req.body.duration_minutes;
+    if (!Number.isInteger(_dm) || _dm < 1 || _dm > 1440)            return _aeErr(res, 'duration_minutes must be an integer between 1 and 1440');
+    if (req.body.timezone !== undefined && !_aeValidTimezone(req.body.timezone)) return _aeErr(res, `Invalid timezone: ${req.body.timezone}`);
+  }
+
+  else if (operation === 'check') {
+    const { customer_id, resource_id, start, duration_minutes, timezone } = raw;
+    req.body = {};
+    if (customer_id      !== undefined) req.body.customer_id      = customer_id;
+    if (resource_id      !== undefined) req.body.resource_id      = resource_id;
+    if (start            !== undefined) req.body.start            = start;
+    if (duration_minutes !== undefined) req.body.duration_minutes = Number(duration_minutes);
+    if (timezone         !== undefined) req.body.timezone         = timezone;
+
+    if (!req.body.customer_id)                                       return _aeErr(res, 'customer_id is required');
+    if (!_AE_UUID_RE.test(req.body.customer_id))                     return _aeErr(res, 'customer_id must be a valid UUID');
+    if (req.body.resource_id !== undefined && !_AE_UUID_RE.test(req.body.resource_id)) return _aeErr(res, 'resource_id must be a valid UUID');
+    if (!req.body.start)                                             return _aeErr(res, 'start is required');
+    if (isNaN(new Date(req.body.start).getTime()))                   return _aeErr(res, 'start must be a valid ISO 8601 timestamp');
+    if (req.body.duration_minutes === undefined) req.body.duration_minutes = 30;
+    const _dm2 = req.body.duration_minutes;
+    if (!Number.isInteger(_dm2) || _dm2 < 1 || _dm2 > 1440)         return _aeErr(res, 'duration_minutes must be an integer between 1 and 1440');
+    if (req.body.timezone !== undefined && !_aeValidTimezone(req.body.timezone)) return _aeErr(res, `Invalid timezone: ${req.body.timezone}`);
+  }
+
+  else if (operation === 'next-free') {
+    const { customer_id, resource_id, after, duration_minutes, timezone } = raw;
+    req.body = {};
+    if (customer_id      !== undefined) req.body.customer_id      = customer_id;
+    if (resource_id      !== undefined) req.body.resource_id      = resource_id;
+    if (after            !== undefined) req.body.after            = after;
+    if (duration_minutes !== undefined) req.body.duration_minutes = Number(duration_minutes);
+    if (timezone         !== undefined) req.body.timezone         = timezone;
+
+    if (!req.body.customer_id)                                       return _aeErr(res, 'customer_id is required');
+    if (!_AE_UUID_RE.test(req.body.customer_id))                     return _aeErr(res, 'customer_id must be a valid UUID');
+    if (req.body.resource_id !== undefined && !_AE_UUID_RE.test(req.body.resource_id)) return _aeErr(res, 'resource_id must be a valid UUID');
+    if (!req.body.after)                                             return _aeErr(res, 'after is required');
+    if (isNaN(new Date(req.body.after).getTime()))                   return _aeErr(res, 'after must be a valid ISO 8601 timestamp');
+    if (req.body.duration_minutes === undefined) req.body.duration_minutes = 30;
+    const _dm3 = req.body.duration_minutes;
+    if (!Number.isInteger(_dm3) || _dm3 < 1 || _dm3 > 1440)         return _aeErr(res, 'duration_minutes must be an integer between 1 and 1440');
+    if (req.body.timezone !== undefined && !_aeValidTimezone(req.body.timezone)) return _aeErr(res, `Invalid timezone: ${req.body.timezone}`);
+  }
+
+  else if (operation === 'day-view') {
+    const { customer_id, resource_id, date, timezone } = raw;
+    req.body = {};
+    if (customer_id !== undefined) req.body.customer_id = customer_id;
+    if (resource_id !== undefined) req.body.resource_id = resource_id;
+    if (date        !== undefined) req.body.date        = date;
+    if (timezone    !== undefined) req.body.timezone    = timezone;
+
+    if (!req.body.customer_id)                                       return _aeErr(res, 'customer_id is required');
+    if (!_AE_UUID_RE.test(req.body.customer_id))                     return _aeErr(res, 'customer_id must be a valid UUID');
+    if (req.body.resource_id !== undefined && !_AE_UUID_RE.test(req.body.resource_id)) return _aeErr(res, 'resource_id must be a valid UUID');
+    if (!req.body.date)                                              return _aeErr(res, 'date is required');
+    if (!_aeValidDate(req.body.date))                                return _aeErr(res, 'date must be a valid date in YYYY-MM-DD format');
+    if (req.body.timezone !== undefined && !_aeValidTimezone(req.body.timezone)) return _aeErr(res, `Invalid timezone: ${req.body.timezone}`);
+  }
+
+  // ── resolve target n8n webhook URL ────────────────────────────────────────
+  const _opKey      = operation.toUpperCase().replace(/-/g, '_');
+  const _aeEntry    = config.services['availability-engine'];
+  const _webhookPath = _aeEntry && _aeEntry[_opKey];
+  if (!_webhookPath) {
+    return res.status(404).json({ success: false, error: { code: 'SERVICE_NOT_FOUND', message: `No webhook configured for availability-engine operation "${operation}"` } });
+  }
+  const _targetUrl = `${config.n8n.baseUrl}/webhook/${_webhookPath}`;
+
+  logger.info('Routing availability-engine request', {
+    method: req.method, version, operation, target: _targetUrl, requestId: req.id,
+  });
+
+  try {
+    const upstream = await forwardRequest({
+      req,
+      targetUrl: _targetUrl,
+      extraMeta: { service: 'availability-engine', operation },
+    });
+    return res
+      .status(upstream.status)
+      .set(pickSafeHeaders(upstream.headers))
+      .json(upstream.data);
+  } catch (err) {
+    return next(err);
+  }
+});
 
 //   All HTTP methods forwarded as-is.
 protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {

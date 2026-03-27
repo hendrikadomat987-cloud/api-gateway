@@ -158,6 +158,101 @@ function assertField(response, field, expected) {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Calculation / Engine Logic helpers  (availability-engine)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Assert a free-slots response contains a non-empty array of slot objects.
+ *
+ * @param {import('axios').AxiosResponse} res
+ * @returns {any[]} the slots array
+ */
+function expectFreeSlotsArray(res) {
+  expect(res.status).toBe(200);
+  expect(res.data.success).toBe(true);
+  const slots = res.data.data;
+  expect(Array.isArray(slots)).toBe(true);
+  expect(slots.length).toBeGreaterThan(0);
+  return slots;
+}
+
+/**
+ * Assert a single slot window has the expected shape:
+ * `{ start: ISO-string, end: ISO-string }` with start < end.
+ *
+ * @param {object} slot
+ */
+function expectSlotWindow(slot) {
+  expect(slot).toBeDefined();
+  expect(typeof slot.start).toBe('string');
+  expect(typeof slot.end).toBe('string');
+  expect(new Date(slot.start).getTime()).toBeLessThan(new Date(slot.end).getTime());
+}
+
+/**
+ * Assert a slot-check response indicates the slot IS bookable.
+ *
+ * @param {import('axios').AxiosResponse} res
+ */
+function expectBookableTrue(res) {
+  expect(res.status).toBe(200);
+  expect(res.data.success).toBe(true);
+  expect(res.data.data.bookable).toBe(true);
+}
+
+/**
+ * Assert a slot-check response indicates the slot is NOT bookable
+ * and includes a non-empty reason string.
+ *
+ * @param {import('axios').AxiosResponse} res
+ * @param {string} [reasonSubstr] - optional substring expected in reason
+ */
+function expectBookableFalseWithReason(res, reasonSubstr) {
+  expect(res.status).toBe(200);
+  expect(res.data.success).toBe(true);
+  expect(res.data.data.bookable).toBe(false);
+  expect(typeof res.data.data.reason).toBe('string');
+  expect(res.data.data.reason.length).toBeGreaterThan(0);
+  if (reasonSubstr) {
+    expect(res.data.data.reason).toContain(reasonSubstr);
+  }
+}
+
+/**
+ * Assert that no two slots in the array overlap.
+ * Slots are compared after sorting by start time.
+ *
+ * @param {Array<{start:string, end:string}>} slots
+ */
+function expectNoSlotOverlap(slots) {
+  expect(Array.isArray(slots)).toBe(true);
+  const sorted = [...slots].sort((a, b) => new Date(a.start) - new Date(b.start));
+  for (let i = 1; i < sorted.length; i++) {
+    const prevEnd   = new Date(sorted[i - 1].end).getTime();
+    const currStart = new Date(sorted[i].start).getTime();
+    expect(currStart).toBeGreaterThanOrEqual(prevEnd);
+  }
+}
+
+/**
+ * Assert a day-view response has the expected top-level shape:
+ * `{ working_windows: [], busy_windows: [], free_slots: [] }`.
+ *
+ * @param {import('axios').AxiosResponse} res
+ * @returns {object} the day-view data object
+ */
+function expectDayViewShape(res) {
+  expect(res.status).toBe(200);
+  expect(res.data.success).toBe(true);
+  const data = res.data.data;
+  expect(data).toBeDefined();
+  expect(Array.isArray(data.working_windows)).toBe(true);
+  expect(Array.isArray(data.busy_windows)).toBe(true);
+  expect(Array.isArray(data.free_slots)).toBe(true);
+  return data;
+}
+
 module.exports = {
   // Jest-native
   expectSuccess,
@@ -168,6 +263,13 @@ module.exports = {
   expectInvalidId,
   expectNoDataLeak,
   expectUuid,
+  // Calculation / Engine Logic
+  expectFreeSlotsArray,
+  expectSlotWindow,
+  expectBookableTrue,
+  expectBookableFalseWithReason,
+  expectNoSlotOverlap,
+  expectDayViewShape,
   // Legacy
   assertStatus,
   assertSuccess,

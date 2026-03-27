@@ -1,0 +1,59 @@
+{
+  "name": "availability-engine — slots",
+  "active": false,
+  "nodes": [
+    {
+      "id": "ae-slots-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ae-slots-webhook-id",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "availability-engine/slots",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "ae-slots-code",
+      "name": "Calculate Free Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── availability-engine / slots ──────────────────────────────────────────────\n// Input: POST body with customer_id, from, to, duration_minutes, timezone\n// tenant_id comes from x-tenant-id header (injected by the API Gateway from JWT).\n// Algorithm:\n//   1. Load working hours (ae_get_working_hours)\n//   2. Load busy periods (ae_get_busy_periods)\n//   3. Load day exceptions (ae_get_day_exceptions)\n//   4. For each day in range: expand working windows, subtract busy, slice into slots\n//   5. Return { success: true, data: [{ start, end }, ...] }\n\nconst SUPABASE_URL = $env.SUPABASE_URL;\nconst SUPABASE_KEY = $env.SUPABASE_SERVICE_KEY;\n\nfunction supabaseRpc(fnName, params) {\n  return $helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/rest/v1/rpc/${fnName}`,\n    headers: {\n      'apikey': SUPABASE_KEY,\n      'Authorization': `Bearer ${SUPABASE_KEY}`,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=representation',\n    },\n    body: JSON.stringify(params),\n  });\n}\n\n// ── Slot calculation helpers ──────────────────────────────────────────────────\n\n/** Convert 'HH:MM' on a date string to a UTC ms timestamp in the given timezone. */\nfunction localTimeToMs(dateStr, timeStr, tz) {\n  // Create a Date by interpreting dateStr + timeStr as a local time in tz.\n  // We use Intl to find the UTC offset for that local moment.\n  const isoLike = `${dateStr}T${timeStr}:00`;\n  // Approximate: parse the dateStr+timeStr as if it were UTC, then adjust\n  // using the tz offset at that moment. This is a best-effort approach.\n  const naiveMs = new Date(isoLike + 'Z').getTime();\n  // Compute the offset in that timezone at that moment.\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: tz,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    hour12: false,\n  });\n  // Parse the local representation back to get offset.\n  const parts = fmt.formatToParts(new Date(naiveMs));\n  const p = {};\n  for (const { type, value } of parts) p[type] = value;\n  const localMs = Date.UTC(\n    parseInt(p.year), parseInt(p.month) - 1, parseInt(p.day),\n    parseInt(p.hour === '24' ? '0' : p.hour), parseInt(p.minute), parseInt(p.second)\n  );\n  const offsetMs = localMs - naiveMs;\n  // Actual UTC ms = naive UTC ms - offset\n  return naiveMs - offsetMs;\n}\n\n/** Returns the day-of-week (0=Sun…6=Sat) for a UTC date at given timezone. */\nfunction getDow(tsMs, tz) {\n  const parts = new Intl.DateTimeFormat('en-US', {\n    timeZone: tz, weekday: 'short',\n  }).formatToParts(new Date(tsMs));\n  const day = parts.find(p => p.type === 'weekday').value;\n  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(day);\n}\n\n/** Returns YYYY-MM-DD for a UTC ms timestamp in the given timezone. */\nfunction toDateStr(tsMs, tz) {\n  const fmt = new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',\n  });\n  return fmt.format(new Date(tsMs)); // en-CA gives YYYY-MM-DD\n}\n\n/** Checks whether [slotStart, slotEnd) overlaps any busy window in the sorted array. */\nfunction overlapsAny(slotStartMs, slotEndMs, busyWindows) {\n  for (const b of busyWindows) {\n    if (slotStartMs < b.endMs && slotEndMs > b.startMs) return true;\n  }\n  return false;\n}\n\n// ── Main ──────────────────────────────────────────────────────────────────────\n\nconst item       = $input.first();\nconst headers    = item.json.headers || {};\nconst body       = item.json.body   || {};\nconst tenantId   = headers['x-tenant-id'];\n\nconst { customer_id, from, to, timezone = 'Europe/Berlin' } = body;\nconst durationMin = Number(body.duration_minutes) || 30;\nconst durationMs  = durationMin * 60 * 1000;\nconst fromMs      = new Date(from).getTime();\nconst toMs        = new Date(to).getTime();\n\n// Fetch data from DB\nlet workingHours, busyPeriods, exceptions;\ntry {\n  [workingHours, busyPeriods, exceptions] = await Promise.all([\n    supabaseRpc('ae_get_working_hours', {\n      p_tenant_id: tenantId, p_customer_id: customer_id,\n    }),\n    supabaseRpc('ae_get_busy_periods', {\n      p_tenant_id: tenantId, p_customer_id: customer_id, p_from: from, p_to: to,\n    }),\n    supabaseRpc('ae_get_day_exceptions', {\n      p_tenant_id: tenantId, p_customer_id: customer_id,\n      p_from_date: toDateStr(fromMs, timezone),\n      p_to_date:   toDateStr(toMs,   timezone),\n    }),\n  ]);\n} catch (err) {\n  return [{ json: { success: false, error: { code: 'DB_ERROR', message: err.message } } }];\n}\n\n// Build lookup maps\nconst whByDow = {};\nfor (const wh of (workingHours || [])) {\n  const d = wh.day_of_week;\n  if (!whByDow[d]) whByDow[d] = [];\n  whByDow[d].push(wh);\n}\n\nconst busyWindows = (busyPeriods || []).map(b => ({\n  startMs: new Date(b.start_at).getTime(),\n  endMs:   new Date(b.end_at).getTime(),\n}));\n\nconst closedDates = new Set();\nconst partialBlocks = []; // { dateStr, startMs, endMs }\nfor (const ex of (exceptions || [])) {\n  if (ex.is_closed) {\n    closedDates.add(ex.date);\n  } else if (ex.start_time_txt && ex.end_time_txt) {\n    partialBlocks.push({\n      dateStr: ex.date,\n      startMs: localTimeToMs(ex.date, ex.start_time_txt, timezone),\n      endMs:   localTimeToMs(ex.date, ex.end_time_txt,   timezone),\n    });\n  }\n}\n\n// Generate free slots day by day\nconst slots = [];\nlet cursor = fromMs;\nconst DAY_MS = 86400000;\n\nwhile (cursor < toMs) {\n  const dateStr = toDateStr(cursor, timezone);\n  const dow     = getDow(cursor, timezone);\n\n  if (!closedDates.has(dateStr) && whByDow[dow]) {\n    const dayPartialBusy = partialBlocks\n      .filter(pb => pb.dateStr === dateStr)\n      .concat(busyWindows);\n\n    for (const wh of whByDow[dow]) {\n      const bufBefore = (wh.buffer_before_min || 0) * 60000;\n      const bufAfter  = (wh.buffer_after_min  || 0) * 60000;\n\n      let winStart = Math.max(localTimeToMs(dateStr, wh.start_time_text, timezone), fromMs);\n      let winEnd   = Math.min(localTimeToMs(dateStr, wh.end_time_text,   timezone), toMs);\n\n      if (winStart >= winEnd) continue;\n\n      // Expand busy windows with buffers\n      const buffered = dayPartialBusy.map(b => ({\n        startMs: b.startMs - bufBefore,\n        endMs:   b.endMs   + bufAfter,\n      }));\n\n      let t = winStart;\n      while (t + durationMs <= winEnd) {\n        if (!overlapsAny(t, t + durationMs, buffered)) {\n          slots.push({\n            start: new Date(t).toISOString(),\n            end:   new Date(t + durationMs).toISOString(),\n          });\n        }\n        t += durationMs;\n      }\n    }\n  }\n\n  // Advance to next day in the timezone\n  const nextDateStr = toDateStr(cursor + DAY_MS, timezone);\n  if (nextDateStr === dateStr) {\n    cursor += DAY_MS; // DST edge: force advance\n  } else {\n    cursor += DAY_MS;\n  }\n}\n\nreturn [{ json: { success: true, data: slots } }];\n"
+      }
+    },
+    {
+      "id": "ae-slots-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Calculate Free Slots", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calculate Free Slots": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

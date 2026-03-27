@@ -85,11 +85,162 @@ function appointmentFactory(customerId, overrides = {}) {
   };
 }
 
+// ── Availability Engine / Calculation ─────────────────────────────────────────
+//
+// These factories produce payloads for the future availability-engine service.
+// They mirror the expected API contract but do NOT assume the service exists yet.
+// All IDs are left to the caller via `overrides`; no hardcoded tenant or resource IDs.
+
+/**
+ * Working-hours entry for a resource/calendar (a single day-of-week window).
+ *
+ * @param {Partial<{day_of_week:number, start_time:string, end_time:string}>} [overrides]
+ */
+function workingHoursFactory(overrides = {}) {
+  return {
+    day_of_week: 1,       // Monday  (0 = Sunday … 6 = Saturday)
+    start_time:  '09:00',
+    end_time:    '17:00',
+    ...overrides,
+  };
+}
+
+/**
+ * Appointment payload shaped for availability-engine overlap / conflict tests.
+ * Distinct from `appointmentFactory` which targets the appointments service CRUD.
+ *
+ * NOTE — schema alignment:
+ * The existing `appointments` table uses `customer_id` as the FK, not `resource_id`.
+ * The parameter is named `ownerId` here to stay neutral until the availability-engine
+ * decides whether computation is anchored on customer_id (existing model) or on a new
+ * resource/calendar concept. Pass the correct field via `overrides` when activating tests.
+ *
+ * @param {string} ownerId     - Required — customer_id or future resource_id
+ * @param {Partial<{start:string, end:string}>} [overrides]
+ */
+function appointmentFactoryForAvailability(ownerId, overrides = {}) {
+  if (!ownerId) throw new Error('appointmentFactoryForAvailability: ownerId is required');
+  const base = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  base.setHours(10, 0, 0, 0);
+  const end = new Date(base.getTime() + 30 * 60 * 1000);
+  return {
+    // Provide the correct FK key via overrides once the engine schema is finalised.
+    // Example: appointmentFactoryForAvailability(customerId, { customer_id: customerId })
+    owner_id: ownerId,
+    start:    base.toISOString(),
+    end:      end.toISOString(),
+    ...overrides,
+  };
+}
+
+/**
+ * Exception day — marks a normally-working day as fully unavailable.
+ *
+ * @param {Partial<{date:string, reason:string}>} [overrides]
+ */
+function exceptionFactory(overrides = {}) {
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return {
+    date:   tomorrow.toISOString().slice(0, 10),  // YYYY-MM-DD
+    reason: `Exception ${seq()} – ${Date.now()}`,
+    ...overrides,
+  };
+}
+
+/**
+ * Manual block — marks a specific time range as unavailable within a working day.
+ *
+ * @param {Partial<{start:string, end:string, reason:string}>} [overrides]
+ */
+function blockFactory(overrides = {}) {
+  const base = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+  base.setHours(14, 0, 0, 0);
+  const end = new Date(base.getTime() + 60 * 60 * 1000);
+  return {
+    start:  base.toISOString(),
+    end:    end.toISOString(),
+    reason: `Block ${seq()} – ${Date.now()}`,
+    ...overrides,
+  };
+}
+
+/**
+ * Free-slots query — asks for available slots in a date range for a given duration.
+ *
+ * @param {Partial<{from:string, to:string, duration_minutes:number, timezone:string}>} [overrides]
+ */
+function slotQueryFactory(overrides = {}) {
+  const from = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+  return {
+    from:             from.toISOString(),
+    to:               to.toISOString(),
+    duration_minutes: 30,
+    timezone:         'Europe/Berlin',
+    ...overrides,
+  };
+}
+
+/**
+ * Slot-check query — asks whether a specific start time is bookable.
+ *
+ * @param {Partial<{start:string, duration_minutes:number, timezone:string}>} [overrides]
+ */
+function slotCheckFactory(overrides = {}) {
+  const start = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  start.setHours(10, 0, 0, 0);
+  return {
+    start:            start.toISOString(),
+    duration_minutes: 30,
+    timezone:         'Europe/Berlin',
+    ...overrides,
+  };
+}
+
+/**
+ * Next-free query — asks for the earliest bookable slot after a given point.
+ *
+ * @param {Partial<{after:string, duration_minutes:number, timezone:string}>} [overrides]
+ */
+function nextFreeFactory(overrides = {}) {
+  const after = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return {
+    after:            after.toISOString(),
+    duration_minutes: 30,
+    timezone:         'Europe/Berlin',
+    ...overrides,
+  };
+}
+
+/**
+ * Day-view query — asks for working windows, busy windows and free slots for a date.
+ *
+ * @param {Partial<{date:string, timezone:string}>} [overrides]
+ */
+function dayViewFactory(overrides = {}) {
+  const next = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  return {
+    date:     next.toISOString().slice(0, 10),  // YYYY-MM-DD
+    timezone: 'Europe/Berlin',
+    ...overrides,
+  };
+}
+
 module.exports = {
   customerFactory,
   requestFactory,
   resourceFactory,
   appointmentFactory,
+  // Availability Engine / Calculation
+  workingHoursFactory,
+  appointmentFactoryForAvailability,
+  exceptionFactory,
+  blockFactory,
+  slotQueryFactory,
+  slotCheckFactory,
+  nextFreeFactory,
+  dayViewFactory,
   REQUEST_TYPES,
   REQUEST_STATUSES,
   RESOURCE_TYPES,

@@ -103,6 +103,17 @@ const config = {
       PUT_ID:    'knowledge/update',      // PUT    /api/v1/knowledge/:id
       DELETE_ID: 'knowledge/delete',      // DELETE /api/v1/knowledge/:id
     },
+
+    // ── availability-engine — calculation / read-only operations ─────────────
+    // These are addressed via dedicated operation routes (not the generic CRUD
+    // router) because the operation name is not a UUID.  The gateway handler
+    // resolves the key by uppercasing the operation and replacing hyphens.
+    'availability-engine': {
+      SLOTS:     'availability-engine/slots',      // POST /api/v1/availability-engine/slots
+      CHECK:     'availability-engine/check',      // POST /api/v1/availability-engine/check
+      NEXT_FREE: 'availability-engine/next-free',  // POST /api/v1/availability-engine/next-free
+      DAY_VIEW:  'availability-engine/day-view',   // POST /api/v1/availability-engine/day-view
+    },
   },
 };
 
