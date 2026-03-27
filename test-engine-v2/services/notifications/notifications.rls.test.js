@@ -11,7 +11,7 @@
  * end-to-end RLS enforcement. They do NOT connect to PostgreSQL directly.
  *
  * PRE-REQUISITE: SQL applied, workflows active, gateway deployed.
- * FIXTURE:       Customer 00000000-0000-0000-0000-000000000001 must exist in DB.
+ * FIXTURE:       Customer a6e3d818-fd62-4db7-bf60-35935d1fad21 must exist in DB.
  */
 
 const { createClient }  = require('../../core/apiClient');
@@ -28,7 +28,7 @@ const tenantB = createClient({ token: config.tokens.tenantB });
 
 // ── Context & fixtures ────────────────────────────────────────────────────────
 const ctx = new TestContext();
-const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000001';
+const VALID_CUSTOMER_ID = 'a6e3d818-fd62-4db7-bf60-35935d1fad21';
 
 const VALID_NOTIFICATION = {
   customer_id: VALID_CUSTOMER_ID,

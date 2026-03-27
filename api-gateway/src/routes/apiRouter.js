@@ -696,13 +696,13 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
-  // ── status — POST validation ────────────────────────────────────────────────
+  // ── status — POST validation ──────────────────────────────────────────────
   if (req.method === 'POST' && service === 'status') {
     const { name, type, value, description } = req.body || {};
     req.body = {};
-    if (name        !== undefined) req.body.name        = typeof name === 'string' ? name.trim() : name;
-    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
-    if (value       !== undefined) req.body.value       = typeof value === 'string' ? value.trim().toLowerCase() : value;
+    if (name !== undefined) req.body.name = typeof name === 'string' ? name.trim() : name;
+    if (type !== undefined) req.body.type = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (value !== undefined) req.body.value = typeof value === 'string' ? value.trim().toLowerCase() : value;
     if (description !== undefined) req.body.description = typeof description === 'string' ? description.trim() : description;
 
     if (!req.body.name || req.body.name === '') {
@@ -711,6 +711,7 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
         error: { code: 'VALIDATION_ERROR', message: 'name is required' },
       });
     }
+
     const VALID_STATUS_TYPES = ['agent', 'service', 'system', 'resource'];
     if (!req.body.type) {
       return res.status(400).json({
@@ -718,12 +719,14 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
         error: { code: 'VALIDATION_ERROR', message: 'type is required' },
       });
     }
+
     if (!VALID_STATUS_TYPES.includes(req.body.type)) {
       return res.status(400).json({
         success: false,
         error: { code: 'VALIDATION_ERROR', message: 'type must be one of: agent, service, system, resource' },
       });
     }
+
     const VALID_STATUS_VALUES = ['online', 'offline', 'busy', 'available', 'unknown'];
     if (req.body.value !== undefined && !VALID_STATUS_VALUES.includes(req.body.value)) {
       return res.status(400).json({
@@ -733,24 +736,29 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
-  // ── status — PUT validation ──────────────────────────────────────────────
+  // ── status — PUT validation ───────────────────────────────────────────────
   if (req.method === 'PUT' && service === 'status') {
     const { name, type, value, description } = req.body || {};
     req.body = {};
-    if (name        !== undefined) req.body.name        = typeof name === 'string' ? name.trim() : name;
-    if (type        !== undefined) req.body.type        = typeof type === 'string' ? type.trim().toLowerCase() : type;
-    if (value       !== undefined) req.body.value       = typeof value === 'string' ? value.trim().toLowerCase() : value;
+    if (name !== undefined) req.body.name = typeof name === 'string' ? name.trim() : name;
+    if (type !== undefined) req.body.type = typeof type === 'string' ? type.trim().toLowerCase() : type;
+    if (value !== undefined) req.body.value = typeof value === 'string' ? value.trim().toLowerCase() : value;
     if (description !== undefined) req.body.description = typeof description === 'string' ? description.trim() : description;
 
     if (Object.keys(req.body).length === 0) {
       return res.status(400).json({
         success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'At least one of name, type, value, or description is required',
-        },
+        error: { code: 'VALIDATION_ERROR', message: 'At least one of name, type, value, or description is required' },
       });
     }
+
+    if (req.body.name !== undefined && req.body.name === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'name must not be empty' },
+      });
+    }
+
     const VALID_STATUS_TYPES = ['agent', 'service', 'system', 'resource'];
     if (req.body.type !== undefined && !VALID_STATUS_TYPES.includes(req.body.type)) {
       return res.status(400).json({
@@ -758,6 +766,7 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
         error: { code: 'VALIDATION_ERROR', message: 'type must be one of: agent, service, system, resource' },
       });
     }
+
     const VALID_STATUS_VALUES = ['online', 'offline', 'busy', 'available', 'unknown'];
     if (req.body.value !== undefined && !VALID_STATUS_VALUES.includes(req.body.value)) {
       return res.status(400).json({
@@ -767,14 +776,14 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
-  // ── knowledge — POST validation ──────────────────────────────────────────
+  // ── knowledge — POST validation ───────────────────────────────────────────
   if (req.method === 'POST' && service === 'knowledge') {
     const { title, content, category, status } = req.body || {};
     req.body = {};
-    if (title    !== undefined) req.body.title    = typeof title === 'string' ? title.trim() : title;
-    if (content  !== undefined) req.body.content  = typeof content === 'string' ? content.trim() : content;
+    if (title !== undefined) req.body.title = typeof title === 'string' ? title.trim() : title;
+    if (content !== undefined) req.body.content = typeof content === 'string' ? content.trim() : content;
     if (category !== undefined) req.body.category = typeof category === 'string' ? category.trim() : category;
-    if (status   !== undefined) req.body.status   = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (status !== undefined) req.body.status = typeof status === 'string' ? status.trim().toLowerCase() : status;
 
     if (!req.body.title || req.body.title === '') {
       return res.status(400).json({
@@ -782,12 +791,14 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
         error: { code: 'VALIDATION_ERROR', message: 'title is required' },
       });
     }
+
     if (!req.body.content || req.body.content === '') {
       return res.status(400).json({
         success: false,
         error: { code: 'VALIDATION_ERROR', message: 'content is required' },
       });
     }
+
     const VALID_KNOWLEDGE_STATUSES = ['draft', 'published', 'archived'];
     if (req.body.status !== undefined && !VALID_KNOWLEDGE_STATUSES.includes(req.body.status)) {
       return res.status(400).json({
@@ -797,35 +808,41 @@ protectedRouter.all('/:version/:service/:id?', async (req, res, next) => {
     }
   }
 
-  // ── knowledge — PUT validation ───────────────────────────────────────────
+  // ── knowledge — PUT validation ────────────────────────────────────────────
   if (req.method === 'PUT' && service === 'knowledge') {
     const { title, content, category, status } = req.body || {};
     req.body = {};
-    if (title    !== undefined) req.body.title    = typeof title === 'string' ? title.trim() : title;
-    if (content  !== undefined) req.body.content  = typeof content === 'string' ? content.trim() : content;
+    if (title !== undefined) req.body.title = typeof title === 'string' ? title.trim() : title;
+    if (content !== undefined) req.body.content = typeof content === 'string' ? content.trim() : content;
     if (category !== undefined) req.body.category = typeof category === 'string' ? category.trim() : category;
-    if (status   !== undefined) req.body.status   = typeof status === 'string' ? status.trim().toLowerCase() : status;
+    if (status !== undefined) req.body.status = typeof status === 'string' ? status.trim().toLowerCase() : status;
 
     if (Object.keys(req.body).length === 0) {
       return res.status(400).json({
         success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'At least one of title, content, category, or status is required',
-        },
+        error: { code: 'VALIDATION_ERROR', message: 'At least one of title, content, category, or status is required' },
       });
     }
+
+    if (req.body.title !== undefined && req.body.title === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'title must not be empty' },
+      });
+    }
+
+    if (req.body.content !== undefined && req.body.content === '') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'content must not be empty' },
+      });
+    }
+
     const VALID_KNOWLEDGE_STATUSES = ['draft', 'published', 'archived'];
     if (req.body.status !== undefined && !VALID_KNOWLEDGE_STATUSES.includes(req.body.status)) {
       return res.status(400).json({
         success: false,
         error: { code: 'VALIDATION_ERROR', message: 'status must be one of: draft, published, archived' },
-      });
-    }
-    if (req.body.title !== undefined && req.body.title.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'VALIDATION_ERROR', message: 'title cannot be empty' },
       });
     }
   }

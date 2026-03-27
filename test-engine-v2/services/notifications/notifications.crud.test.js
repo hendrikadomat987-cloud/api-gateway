@@ -4,11 +4,11 @@
  * Notifications — CRUD Test Suite (v2)
  *
  * Tests the full create/list/read/update/delete lifecycle for /notifications.
- * Uses the fixture customer 00000000-0000-0000-0000-000000000001.
+ * Uses the fixture customer a6e3d818-fd62-4db7-bf60-35935d1fad21.
  * All created records are cleaned up explicitly in afterAll.
  *
  * PRE-REQUISITE: SQL applied, workflows active, gateway deployed.
- * FIXTURE:       Customer 00000000-0000-0000-0000-000000000001 must exist in DB.
+ * FIXTURE:       Customer a6e3d818-fd62-4db7-bf60-35935d1fad21 must exist in DB.
  */
 
 const { createClient }    = require('../../core/apiClient');
@@ -24,7 +24,7 @@ const config = require('../../config/config');
 const client = createClient({ token: config.tokens.tenantA });
 const ctx    = new TestContext();
 
-const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000001';
+const VALID_CUSTOMER_ID = 'a6e3d818-fd62-4db7-bf60-35935d1fad21';
 
 const VALID_PAYLOAD = {
   customer_id: VALID_CUSTOMER_ID,
