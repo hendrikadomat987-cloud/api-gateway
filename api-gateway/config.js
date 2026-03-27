@@ -103,8 +103,6 @@ const config = {
       PUT_ID:    'knowledge/update',      // PUT    /api/v1/knowledge/:id
       DELETE_ID: 'knowledge/delete',      // DELETE /api/v1/knowledge/:id
     },
-    appointment:  'appointment_service',   // legacy — preserved for backward compatibility
-    request:      'request_service',
   },
 };
 
