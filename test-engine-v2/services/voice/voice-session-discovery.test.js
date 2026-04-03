@@ -14,6 +14,8 @@ const {
   listVoiceCalls,
   getCallSession,
   getVoiceSession,
+  getVoiceCall,
+  postVoiceFallback,
 } = require('../../core/apiClient');
 
 const {
@@ -77,6 +79,33 @@ describe('voice / session-discovery', () => {
   it('Tenant B cannot read Tenant A session via call discovery', async () => {
     const res = await getCallSession(config.tokens.tenantB, internalCallId);
     assertTenantIsolationFailure(res, internalCallId);
+  });
+
+  it('POST /voice/sessions/:id/fallback → session and call transition to fallback', async () => {
+    // Fresh call + session — must not share state with the 'active' discovery tests above
+    const fallbackCallId = uniqueVoiceCallId('test-call-fallback');
+
+    const webhookRes = await sendVoiceWebhook(buildVapiStatusUpdate(fallbackCallId));
+    if (webhookRes.status >= 300) {
+      throw new Error(`Fallback setup — webhook rejected: ${JSON.stringify(webhookRes.data)}`);
+    }
+
+    const list = await listVoiceCalls(TOKEN);
+    const call = list.data.data.find((c) => c.provider_call_id === fallbackCallId);
+    if (!call) throw new Error(`Fallback setup — call not found: ${fallbackCallId}`);
+
+    const discoveryRes = await getCallSession(TOKEN, call.id);
+    const session      = expectSuccess(discoveryRes);
+
+    const fallbackRes     = await postVoiceFallback(TOKEN, session.id);
+    const updatedSession  = expectSuccess(fallbackRes);
+
+    expect(updatedSession.status).toBe('fallback');
+
+    const callRes     = await getVoiceCall(TOKEN, call.id);
+    const updatedCall = expectSuccess(callRes);
+
+    expect(updatedCall.status).toBe('fallback');
   });
 
   it('GET /voice/sessions/:id → returns the same session resolved via call discovery', async () => {
