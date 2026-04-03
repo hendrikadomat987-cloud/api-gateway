@@ -1,0 +1,77 @@
+import Fastify from 'fastify';
+import fastifyJwt from '@fastify/jwt';
+import type { FastifyBaseLogger } from 'fastify';
+import type { Config } from './config/env.js';
+import type { Logger } from 'pino';
+import { errorHandler } from './errors/index.js';
+import { requestContextPlugin } from './plugins/requestContext.js';
+import { pingRoutes } from './routes/ping.js';
+import { healthRoutes } from './routes/health.js';
+import { apiRoutes } from './routes/api.js';
+import { voicePublicRoutes } from './routes/voice/public.js';
+import { voiceInternalRoutes } from './routes/voice/internal.js';
+import { voiceToolsBookingRoutes } from './routes/voice/tools-booking.js';
+import { voiceToolsRestaurantRoutes } from './routes/voice/tools-restaurant.js';
+
+export interface BuildAppOptions {
+  config: Config;
+  logger: Logger;
+}
+
+export async function buildApp(opts: BuildAppOptions) {
+  const { config, logger } = opts;
+
+const app = Fastify({
+  loggerInstance: logger,
+  // Let requestContextPlugin manage IDs; disable Fastify's auto-counter
+  genReqId: () => '',
+  trustProxy: true,
+  ajv: {
+    customOptions: {
+      coerceTypes: false,
+      allErrors: false,
+    },
+  },
+});
+
+  // ── Plugins ────────────────────────────────────────────────────────────────
+
+  await app.register(requestContextPlugin);
+
+  await app.register(fastifyJwt, {
+    secret: config.JWT_SECRET,
+    decode: { complete: true },
+    verify: {
+      ...(config.JWT_ISSUER   && { allowedIss: config.JWT_ISSUER }),
+      ...(config.JWT_AUDIENCE && { allowedAud: config.JWT_AUDIENCE }),
+    },
+  });
+
+  // ── Global error handler ───────────────────────────────────────────────────
+
+  app.setErrorHandler((error, request, reply) => {
+  return errorHandler(error as any, request as any, reply as any);
+});
+
+  // ── Routes ─────────────────────────────────────────────────────────────────
+
+  await app.register(pingRoutes);
+  await app.register(healthRoutes);
+  await app.register(apiRoutes, { config });
+
+  // ── Voice routes ───────────────────────────────────────────────────────────
+  await app.register(voicePublicRoutes);
+  await app.register(voiceInternalRoutes);
+  await app.register(voiceToolsBookingRoutes);
+  await app.register(voiceToolsRestaurantRoutes);
+
+  // 404 fallback
+  app.setNotFoundHandler((_request, reply) => {
+    reply.status(404).send({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Route not found' },
+    });
+  });
+
+  return app;
+}

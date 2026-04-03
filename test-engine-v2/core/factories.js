@@ -227,6 +227,99 @@ function dayViewFactory(overrides = {}) {
   };
 }
 
+// ── Voice / VAPI ──────────────────────────────────────────────────────────────
+
+/**
+ * Generate a unique provider_call_id for each test run.
+ * Combines a timestamp with a short random suffix to prevent collisions
+ * across runs against the same persistent database.
+ *
+ * @param {string} [prefix='test-call-voice']
+ * @returns {string}
+ */
+function uniqueVoiceCallId(prefix = 'test-call-voice') {
+  const rnd = Math.random().toString(36).slice(2, 6);
+  return `${prefix}-${Date.now()}-${rnd}`;
+}
+
+// Tenant resolution via VAPI uses message.call.assistantId (provider_agent_id)
+// or message.call.customer.number (phone_number).
+// Set VAPI_ASSISTANT_ID in .env to match the provider_agent_id of a seeded
+// active voice_agents row for Tenant A.
+const VAPI_ASSISTANT_ID = process.env.VAPI_ASSISTANT_ID || '';
+
+/**
+ * Build the VAPI call sub-object.
+ * Includes all required schema fields: id, createdAt, updatedAt.
+ * assistantId is included when VAPI_ASSISTANT_ID is configured — required for
+ * tenant resolution if no matching phone number is registered.
+ *
+ * @param {string} callId
+ * @returns {object}
+ */
+function _buildVapiCall(callId) {
+  const now = new Date().toISOString();
+  const call = {
+    id:        callId,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (VAPI_ASSISTANT_ID) call.assistantId = VAPI_ASSISTANT_ID;
+  return call;
+}
+
+/**
+ * VAPI status-update webhook payload.
+ * Sent by the provider when a call transitions to in-progress.
+ *
+ * @param {string} [callId]
+ * @param {object} [overrides] - merged into message object
+ */
+function buildVapiStatusUpdate(callId = VOICE_CALL_ID_1, overrides = {}) {
+  return {
+    message: {
+      type:      'status-update',
+      call:      _buildVapiCall(callId),
+      status:    'in-progress',
+      timestamp: new Date().toISOString(),
+      ...overrides,
+    },
+  };
+}
+
+/**
+ * VAPI end-of-call-report webhook payload.
+ * Sent by the provider when the call ends. Backend sets status → completed.
+ *
+ * @param {string} [callId]
+ * @param {object} [overrides] - merged into message object
+ */
+function buildVapiEndOfCallReport(callId = VOICE_CALL_ID_1, overrides = {}) {
+  return {
+    message: {
+      type:            'end-of-call-report',
+      call:            _buildVapiCall(callId),
+      endedReason:     'customer-ended-call',
+      summary:         'Test call completed successfully.',
+      durationSeconds: 120,
+      timestamp:       new Date().toISOString(),
+      ...overrides,
+    },
+  };
+}
+
+/**
+ * Return the JWT token for a given tenant (A or B).
+ * Reads from config — requires dotenv to be loaded first.
+ *
+ * @param {'A'|'B'} [tenant='A']
+ * @returns {string}
+ */
+function buildVoiceJwt(tenant = 'A') {
+  const config = require('../config/config');
+  return tenant === 'B' ? config.tokens.tenantB : config.tokens.tenantA;
+}
+
 module.exports = {
   customerFactory,
   requestFactory,
@@ -241,6 +334,12 @@ module.exports = {
   slotCheckFactory,
   nextFreeFactory,
   dayViewFactory,
+  // Voice / VAPI
+  uniqueVoiceCallId,
+  buildVapiStatusUpdate,
+  buildVapiEndOfCallReport,
+  buildVoiceJwt,
+  VAPI_ASSISTANT_ID,
   REQUEST_TYPES,
   REQUEST_STATUSES,
   RESOURCE_TYPES,

@@ -253,6 +253,116 @@ function expectDayViewShape(res) {
   return data;
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Voice helpers
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Assert a voice call has status=completed and the required summary fields.
+ * Field names match the voice_calls DB schema (snake_case, returned as-is).
+ *
+ * @param {object} call - response.data.data from getVoiceCall
+ */
+function assertVoiceCallCompleted(call) {
+  expect(call).toBeDefined();
+  expect(call.status).toBe('completed');
+  // duration_seconds is the DB column name (integer, nullable until end-of-call-report)
+  expect(call.duration_seconds).toBeDefined();
+  expect(typeof call.duration_seconds).toBe('number');
+  expect(call.summary).toBeDefined();
+  expect(call.summary.length).toBeGreaterThan(0);
+}
+
+/**
+ * Assert an event of the given type exists in the events array.
+ * Returns the first matching event.
+ *
+ * @param {object[]} events
+ * @param {string}   type  - e.g. 'end-of-call-report'
+ * @returns {object} the matched event
+ */
+function assertEventExists(events, type) {
+  expect(Array.isArray(events)).toBe(true);
+  const found = events.find((e) => e.event_type === type);
+  if (!found) {
+    throw new Error(
+      `Expected event of type "${type}" but found none.\n` +
+      `Events: ${JSON.stringify(events.map((e) => e.event_type))}`
+    );
+  }
+  return found;
+}
+
+/**
+ * Assert exactly one event of the given type exists (idempotency check).
+ *
+ * @param {object[]} events
+ * @param {string}   type
+ * @returns {object} the single matching event
+ */
+function assertSingleEvent(events, type) {
+  expect(Array.isArray(events)).toBe(true);
+  const matching = events.filter((e) => e.event_type === type);
+  if (matching.length !== 1) {
+    throw new Error(
+      `Expected exactly 1 event of type "${type}" but found ${matching.length}.\n` +
+      `All events: ${JSON.stringify(events.map((e) => e.event_type))}`
+    );
+  }
+  return matching[0];
+}
+
+/**
+ * Assert an event has valid timestamp fields.
+ *
+ * event_ts is nullable in the schema (provider timestamp — may not be set for
+ * all event types). When present it must be a valid ISO string.
+ * created_at (persistence time) is always present and always valid.
+ *
+ * @param {object} event
+ */
+function assertEventTimestamp(event) {
+  expect(event).toBeDefined();
+
+  // created_at is NOT NULL in the schema — always check it
+  expect(event.created_at).toBeDefined();
+  const cat = new Date(event.created_at).getTime();
+  if (Number.isNaN(cat)) {
+    throw new Error(`created_at "${event.created_at}" is not a valid ISO timestamp.`);
+  }
+
+  // event_ts is nullable (TIMESTAMPTZ NULL) — only validate when present
+  if (event.event_ts != null) {
+    const ets = new Date(event.event_ts).getTime();
+    if (Number.isNaN(ets)) {
+      throw new Error(`event_ts "${event.event_ts}" is not a valid ISO timestamp.`);
+    }
+  }
+}
+
+/**
+ * Assert cross-tenant isolation — the response must NOT contain voice data.
+ * Accepts 404, empty data, or a well-formed empty list.
+ *
+ * @param {import('axios').AxiosResponse} res
+ * @param {string} [callId] - for the error message
+ */
+function assertTenantIsolationFailure(res, callId) {
+  const hasData =
+    res.status === 200 &&
+    res.data?.success === true &&
+    res.data?.data != null &&
+    (Array.isArray(res.data.data) ? res.data.data.length > 0 : true);
+
+  if (hasData) {
+    throw new Error(
+      `DATA LEAK: Tenant B can see voice data` +
+      (callId ? ` for call "${callId}"` : '') +
+      `.\nStatus: ${res.status}\nBody: ${JSON.stringify(res.data)}`
+    );
+  }
+}
+
 module.exports = {
   // Jest-native
   expectSuccess,
@@ -270,6 +380,12 @@ module.exports = {
   expectBookableFalseWithReason,
   expectNoSlotOverlap,
   expectDayViewShape,
+  // Voice
+  assertVoiceCallCompleted,
+  assertEventExists,
+  assertSingleEvent,
+  assertEventTimestamp,
+  assertTenantIsolationFailure,
   // Legacy
   assertStatus,
   assertSuccess,

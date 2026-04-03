@@ -98,4 +98,86 @@ function createClient(options = {}) {
 // Default authenticated client (uses config.tokens.tenantA)
 const defaultClient = createClient();
 
-module.exports = { ApiClient, createClient, defaultClient };
+// ── Voice API ─────────────────────────────────────────────────────────────────
+//
+// Public endpoint — no JWT required.
+// Internal endpoints — JWT required (pass token explicitly).
+
+/**
+ * POST /voice/providers/vapi/webhook
+ * Public endpoint — no Authorization header.
+ *
+ * @param {object} message - VAPI webhook payload
+ */
+function sendVoiceWebhook(message) {
+  return createClient({ token: '' }).post('/voice/providers/vapi/webhook', message);
+}
+
+/**
+ * GET /voice/calls
+ * @param {string} token
+ */
+function listVoiceCalls(token) {
+  return createClient({ token }).get('/voice/calls');
+}
+
+/**
+ * GET /voice/calls/:id
+ * @param {string} token
+ * @param {string} callId
+ */
+function getVoiceCall(token, callId) {
+  return createClient({ token }).get(`/voice/calls/${callId}`);
+}
+
+/**
+ * GET /voice/calls/:id/events
+ * @param {string} token
+ * @param {string} callId
+ */
+function getVoiceCallEvents(token, callId) {
+  return createClient({ token }).get(`/voice/calls/${callId}/events`);
+}
+
+/**
+ * GET /voice/sessions/:id
+ * @param {string} token
+ * @param {string} sessionId
+ */
+function getVoiceSession(token, sessionId) {
+  return createClient({ token }).get(`/voice/sessions/${sessionId}`);
+}
+
+/**
+ * POST /voice/sessions/:id/fallback
+ * @param {string} token
+ * @param {string} sessionId
+ * @param {object} [body]
+ */
+function postVoiceFallback(token, sessionId, body = {}) {
+  return createClient({ token }).post(`/voice/sessions/${sessionId}/fallback`, body);
+}
+
+/**
+ * POST /voice/sessions/:id/handover
+ * @param {string} token
+ * @param {string} sessionId
+ * @param {object} [body]
+ */
+function postVoiceHandover(token, sessionId, body = {}) {
+  return createClient({ token }).post(`/voice/sessions/${sessionId}/handover`, body);
+}
+
+module.exports = {
+  ApiClient,
+  createClient,
+  defaultClient,
+  // Voice
+  sendVoiceWebhook,
+  listVoiceCalls,
+  getVoiceCall,
+  getVoiceCallEvents,
+  getVoiceSession,
+  postVoiceFallback,
+  postVoiceHandover,
+};

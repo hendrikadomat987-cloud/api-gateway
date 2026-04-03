@@ -21,13 +21,24 @@
     "test:summary:scenarios": "node run-summary.js scenarios",
     "test:availability-engine": "jest services/availability-engine",
     "test:summary:availability-engine": "node run-summary.js services/availability-engine",
+    "test:voice": "jest services/voice",
+    "test:voice:flow": "jest services/voice/voice-full-flow",
+    "test:voice:idempotency": "jest services/voice/voice-idempotency",
+    "test:voice:auth": "jest services/voice/voice-auth",
+    "test:voice:rls": "jest services/voice/voice-tenant-isolation",
+    "test:voice:payload": "jest services/voice/voice-invalid-payload",
+    "test:migrations": "jest --config jest.config.migrations.js",
+    "test:migrations:schema": "jest --config jest.config.migrations.js migrations-schema",
+    "test:migrations:rls": "jest --config jest.config.migrations.js migrations-rls",
+    "test:migrations:smoke": "jest --config jest.config.migrations.js migrations-freshdb-smoke",
     "test:debug": "jest --verbose --forceExit",
     "generate-token": "node generate-token.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^16.0.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "jest": "^29.7.0"

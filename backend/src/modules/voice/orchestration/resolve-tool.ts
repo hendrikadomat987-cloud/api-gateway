@@ -1,0 +1,85 @@
+// src/modules/voice/orchestration/resolve-tool.ts
+import { VoiceToolNotAllowedError } from '../../../errors/voice-errors.js';
+import type { VoiceContext, ToolInput, ToolResult } from '../../../types/voice.js';
+
+// ── Booking tools ─────────────────────────────────────────────────────────────
+
+import { runCheckAvailability } from '../tools/booking/check-availability.tool.js';
+import { runGetNextFree } from '../tools/booking/get-next-free.tool.js';
+import { runBookAppointment } from '../tools/booking/book-appointment.tool.js';
+import { runAnswerBookingQuestion } from '../tools/booking/answer-booking-question.tool.js';
+import { runCreateCallbackRequest } from '../tools/booking/create-callback-request.tool.js';
+
+// ── Restaurant tools ──────────────────────────────────────────────────────────
+
+import { runGetMenu } from '../tools/restaurant/get-menu.tool.js';
+import { runSearchMenuItem } from '../tools/restaurant/search-menu-item.tool.js';
+import { runAnswerMenuQuestion } from '../tools/restaurant/answer-menu-question.tool.js';
+import { runCreateOrder } from '../tools/restaurant/create-order.tool.js';
+import { runAddOrderItem } from '../tools/restaurant/add-order-item.tool.js';
+import { runUpdateOrderItem } from '../tools/restaurant/update-order-item.tool.js';
+import { runConfirmOrder } from '../tools/restaurant/confirm-order.tool.js';
+import { runCreateRestaurantCallbackRequest } from '../tools/restaurant/create-restaurant-callback-request.tool.js';
+
+// ── Dispatch maps ─────────────────────────────────────────────────────────────
+
+type ToolHandler = (ctx: VoiceContext, args: Record<string, unknown>) => Promise<unknown>;
+
+const BOOKING_TOOLS: Record<string, ToolHandler> = {
+  check_availability: runCheckAvailability,
+  get_next_free: runGetNextFree,
+  book_appointment: runBookAppointment,
+  answer_booking_question: runAnswerBookingQuestion,
+  create_callback_request: runCreateCallbackRequest,
+};
+
+const RESTAURANT_TOOLS: Record<string, ToolHandler> = {
+  get_menu: runGetMenu,
+  search_menu_item: runSearchMenuItem,
+  answer_menu_question: runAnswerMenuQuestion,
+  create_order: runCreateOrder,
+  add_order_item: runAddOrderItem,
+  update_order_item: runUpdateOrderItem,
+  confirm_order: runConfirmOrder,
+  create_restaurant_callback_request: runCreateRestaurantCallbackRequest,
+};
+
+const TOOL_REGISTRY: Record<string, Record<string, ToolHandler>> = {
+  booking: BOOKING_TOOLS,
+  restaurant: RESTAURANT_TOOLS,
+};
+
+// ── Public dispatch ───────────────────────────────────────────────────────────
+
+/**
+ * Dispatches a list of tool inputs to the correct handler for the current track.
+ * Each tool is executed independently; failures are captured per-tool.
+ */
+export async function dispatchTools(
+  context: VoiceContext,
+  tools: ToolInput[],
+): Promise<ToolResult[]> {
+  const trackMap = TOOL_REGISTRY[context.track];
+  if (!trackMap) throw new VoiceToolNotAllowedError(`track:${context.track}`);
+
+  return Promise.all(
+    tools.map(async (tool): Promise<ToolResult> => {
+      const handler = trackMap[tool.name];
+      if (!handler) {
+        return {
+          name: tool.name,
+          success: false,
+          error: `Tool not allowed in track '${context.track}': ${tool.name}`,
+        };
+      }
+
+      try {
+        const result = await handler(context, tool.arguments);
+        return { name: tool.name, success: true, result };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Tool execution failed';
+        return { name: tool.name, success: false, error: message };
+      }
+    }),
+  );
+}
