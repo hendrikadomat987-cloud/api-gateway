@@ -1,5 +1,5 @@
 import type { VoiceEvent, VoiceEventProcessingStatus } from '../../../types/voice.js';
-import { withTenant } from '../../../lib/db.js';
+import { pool, withTenant } from '../../../lib/db.js';
 
 export async function findEventById(
   tenantId: string,
@@ -21,8 +21,32 @@ export async function findEventById(
   });
 }
 
+/**
+ * Returns distinct tenant IDs that currently have at least one failed event.
+ *
+ * This is an administrative query for the internal retry worker. It uses
+ * the database connection's default role without a per-tenant RLS context.
+ * Only tenant IDs (not event data) are returned here; all actual event access
+ * is performed per-tenant via withTenant() in listFailedEvents() and
+ * replayFailedEvent().
+ *
+ * Must only be called from trusted background processes, never from request handlers.
+ */
+export async function listDistinctTenantsWithFailedEvents(): Promise<string[]> {
+  const result = await pool.query<{ tenant_id: string }>(
+    `
+    SELECT DISTINCT tenant_id
+    FROM voice_events
+    WHERE processing_status = 'failed'
+    `,
+  );
+
+  return result.rows.map((r) => r.tenant_id);
+}
+
 export async function listFailedEvents(
   tenantId: string,
+  limit?: number,
 ): Promise<VoiceEvent[]> {
   return withTenant(tenantId, async (client) => {
     const result = await client.query<VoiceEvent>(
@@ -31,7 +55,8 @@ export async function listFailedEvents(
       FROM voice_events
       WHERE tenant_id = $1
         AND processing_status = 'failed'
-      ORDER BY created_at DESC
+      ORDER BY created_at ASC
+      ${limit !== undefined ? `LIMIT ${limit}` : ''}
       `,
       [tenantId],
     );
