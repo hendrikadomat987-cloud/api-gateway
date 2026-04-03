@@ -108,7 +108,7 @@ export async function listEventsByVoiceCallId(
 }
 
 export async function createEvent(
-  data: Omit<VoiceEvent, 'id' | 'created_at'>,
+  data: Omit<VoiceEvent, 'id' | 'created_at' | 'retry_count' | 'last_retry_at'>,
 ): Promise<VoiceEvent> {
   return withTenant(data.tenant_id, async (client) => {
     const result = await client.query<VoiceEvent>(
@@ -170,6 +170,79 @@ export async function updateEventStatus(
         AND id = $2
       `,
       [tenantId, eventId, status, errorMessage ?? null],
+    );
+  });
+}
+
+/**
+ * Atomically increment retry_count and record the retry timestamp.
+ * Called by the worker immediately before each replay attempt.
+ */
+export async function incrementRetryCount(
+  tenantId: string,
+  eventId: string,
+): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    await client.query(
+      `
+      UPDATE voice_events
+      SET
+        retry_count   = retry_count + 1,
+        last_retry_at = now()
+      WHERE tenant_id = $1
+        AND id = $2
+      `,
+      [tenantId, eventId],
+    );
+  });
+}
+
+/**
+ * Move an event to the dead_letter terminal state.
+ * Called by the worker when retry_count has reached the configured maximum.
+ */
+export async function markEventDeadLetter(
+  tenantId: string,
+  eventId: string,
+): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    await client.query(
+      `
+      UPDATE voice_events
+      SET
+        processing_status        = 'dead_letter',
+        processing_error_code    = 'MAX_RETRIES_EXCEEDED',
+        processing_error_message = 'Maximum automatic retry attempts reached'
+      WHERE tenant_id = $1
+        AND id = $2
+      `,
+      [tenantId, eventId],
+    );
+  });
+}
+
+/**
+ * Reset retry state so a dead_letter event gets a fresh set of auto-retries
+ * after a successful manual replay.
+ * Called by replayFailedEvent when the source event was in dead_letter state.
+ */
+export async function resetRetryCount(
+  tenantId: string,
+  eventId: string,
+): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    await client.query(
+      `
+      UPDATE voice_events
+      SET
+        retry_count              = 0,
+        last_retry_at            = NULL,
+        processing_error_code    = NULL,
+        processing_error_message = NULL
+      WHERE tenant_id = $1
+        AND id = $2
+      `,
+      [tenantId, eventId],
     );
   });
 }

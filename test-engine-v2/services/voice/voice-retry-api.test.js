@@ -172,4 +172,56 @@ describe('voice / retry-api', () => {
       assertEventProcessingStatus(event, 'processed');
     });
   });
+
+  // ── Case 4: Dead-letter event — manual retry is allowed (DB required) ─────
+
+  describe('retry dead_letter event (requires VOICE_TEST_DB_URL)', () => {
+    let dbClient;
+    let callId;
+    let eventId;
+
+    beforeAll(async () => {
+      if (!isDbConfigured()) return;
+
+      const providerCallId = uniqueVoiceCallId('test-retry-api-dead-letter');
+      callId  = await seedCall(providerCallId);
+      const event = await getEventByType(callId, 'call.status_update');
+      eventId = event.id;
+
+      dbClient = await createClient();
+      // Simulate an event that exhausted auto-retries
+      await forceEventStatus(dbClient, eventId, 'dead_letter');
+    });
+
+    afterAll(async () => {
+      if (dbClient) await releaseClient(dbClient);
+    });
+
+    it('retry dead_letter event → 200 (operator override allowed)', async () => {
+      if (!isDbConfigured()) {
+        console.log('  [SKIP] VOICE_TEST_DB_URL not configured — skipping dead-letter manual retry test');
+        return;
+      }
+
+      expect(eventId).toBeDefined();
+      const res = await retryVoiceEvent(TOKEN, eventId);
+      expect(res.status).toBe(200);
+      expect(res.data.success).toBe(true);
+    });
+
+    it('after manual retry of dead_letter, event transitions to processed', async () => {
+      if (!isDbConfigured()) {
+        console.log('  [SKIP] VOICE_TEST_DB_URL not configured — skipping dead-letter manual retry test');
+        return;
+      }
+
+      const res    = await getVoiceCallEvents(TOKEN, callId);
+      const events = expectSuccess(res);
+      const event  = events.find((e) => e.id === eventId);
+
+      if (!event) throw new Error(`Event ${eventId} not found in call events after dead_letter retry`);
+
+      assertEventProcessingStatus(event, 'processed');
+    });
+  });
 });

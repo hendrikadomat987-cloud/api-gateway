@@ -12,9 +12,10 @@ const schema = z.object({
   JWT_AUDIENCE: z.string().optional(),
   VAPI_WEBHOOK_SECRET: z.string().min(1, 'VAPI_WEBHOOK_SECRET is required'),
   // ── Voice retry worker ──────────────────────────────────────────────────────
-  VOICE_RETRY_ENABLED:     z.coerce.boolean().default(false),
-  VOICE_RETRY_INTERVAL_MS: z.coerce.number().int().min(1000).default(60_000),
-  VOICE_RETRY_BATCH_SIZE:  z.coerce.number().int().min(1).max(100).default(10),
+  VOICE_RETRY_ENABLED:      z.coerce.boolean().default(false),
+  VOICE_RETRY_INTERVAL_MS:  z.coerce.number().int().min(1000).default(60_000),
+  VOICE_RETRY_BATCH_SIZE:   z.coerce.number().int().min(1).max(100).default(10),
+  VOICE_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(3),
   // ── n8n forwarding ─────────────────────────────────────────────────────────
   N8N_BASE_URL: z.string().url('N8N_BASE_URL must be a valid URL'),
   N8N_WEBHOOK_SECRET: z.string().optional(),

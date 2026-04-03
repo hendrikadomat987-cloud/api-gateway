@@ -213,4 +213,76 @@ describe('voice / retry-worker', () => {
       assertEventProcessingStatus(event, 'processed');
     }
   }, WORKER_POLL_TIMEOUT_MS + 10_000);
+
+  // ── Dead-letter: event exceeding retry limit is moved to dead_letter ─────
+
+  it('event with retry_count >= VOICE_RETRY_MAX_ATTEMPTS is moved to dead_letter', async () => {
+    if (!isDbConfigured()) {
+      console.log('  [SKIP] VOICE_TEST_DB_URL not configured — skipping dead-letter test');
+      return;
+    }
+
+    const { callId, eventId } = await seedCallAndEvent(
+      uniqueVoiceCallId('test-retry-dead-letter'),
+    );
+
+    // Force the event to failed AND set retry_count to a value at the limit.
+    // VOICE_RETRY_MAX_ATTEMPTS defaults to 3; we set retry_count = 3 so the
+    // worker's first check (retry_count >= maxAttempts) moves it to dead_letter.
+    await forceEventStatus(dbClient, eventId, 'failed');
+    await dbClient.query(
+      'UPDATE voice_events SET retry_count = 3 WHERE id = $1',
+      [eventId],
+    );
+
+    // Poll until the worker picks it up and moves it to dead_letter
+    const resolved = await pollUntil(async () => {
+      const res   = await getVoiceCallEvents(TOKEN, callId);
+      if (res.status !== 200 || !res.data?.success) return false;
+      const event = res.data.data.find((e) => e.id === eventId);
+      return event?.processing_status === 'dead_letter';
+    });
+
+    if (!resolved) {
+      const res    = await getVoiceCallEvents(TOKEN, callId);
+      const events = res.status === 200 && res.data?.success ? res.data.data : [];
+      const event  = events.find((e) => e.id === eventId);
+      throw new Error(
+        `Worker did not dead-letter event ${eventId} within ${WORKER_POLL_TIMEOUT_MS / 1000}s.\n` +
+        `Current status: ${event?.processing_status ?? 'unknown'}\n` +
+        `Ensure VOICE_RETRY_ENABLED=true, VOICE_RETRY_INTERVAL_MS is short, and VOICE_RETRY_MAX_ATTEMPTS=3.`
+      );
+    }
+
+    const finalRes    = await getVoiceCallEvents(TOKEN, callId);
+    const finalEvents = expectSuccess(finalRes);
+    const finalEvent  = finalEvents.find((e) => e.id === eventId);
+    assertEventProcessingStatus(finalEvent, 'dead_letter');
+  }, WORKER_POLL_TIMEOUT_MS + 10_000);
+
+  // ── Dead-letter events are not picked up by the next worker batch ─────────
+
+  it('dead_letter event is not retried by the worker in subsequent batches', async () => {
+    if (!isDbConfigured()) {
+      console.log('  [SKIP] VOICE_TEST_DB_URL not configured — skipping dead-letter stability test');
+      return;
+    }
+
+    const { callId, eventId } = await seedCallAndEvent(
+      uniqueVoiceCallId('test-dead-letter-stable'),
+    );
+
+    // Directly set the event to dead_letter — simulates a pre-dead-lettered event
+    await forceEventStatus(dbClient, eventId, 'dead_letter');
+
+    // Wait for two full worker intervals to confirm the event is not touched
+    await sleep(WORKER_POLL_INTERVAL_MS * 4);
+
+    const res    = await getVoiceCallEvents(TOKEN, callId);
+    const events = expectSuccess(res);
+    const event  = events.find((e) => e.id === eventId);
+
+    // Must still be dead_letter — the worker only queries processing_status = 'failed'
+    assertEventProcessingStatus(event, 'dead_letter');
+  }, WORKER_POLL_TIMEOUT_MS + 10_000);
 });

@@ -8,6 +8,7 @@ import { processEvent } from './event-processing.service.js';
 import {
   findEventById,
   updateEventStatus,
+  resetRetryCount,
 } from '../repositories/voice-events.repository.js';
 import { findCallById } from '../repositories/voice-calls.repository.js';
 import { findAgentByIdForTenant } from '../repositories/voice-agents.repository.js';
@@ -167,11 +168,20 @@ export async function replayFailedEvent(
 ): Promise<void> {
   const event = await findEventById(tenantId, eventId);
   if (!event) throw new VoiceEventNotFoundError(eventId);
-  if (event.processing_status !== 'failed') {
+  if (event.processing_status !== 'failed' && event.processing_status !== 'dead_letter') {
     throw new VoiceEventNotRetryableError(eventId, event.processing_status);
   }
 
-  log.info({ tenantId, eventId, eventType: event.event_type }, 'voice event retry requested');
+  log.info(
+    { tenantId, eventId, eventType: event.event_type, fromStatus: event.processing_status },
+    'voice event retry requested',
+  );
+
+  // Manual retry of a dead_letter event resets the retry counter so the event
+  // gets a fresh set of automatic retries if it fails again.
+  if (event.processing_status === 'dead_letter') {
+    await resetRetryCount(tenantId, eventId);
+  }
 
   if (!event.voice_call_id) throw new VoiceInternalError(`Event ${eventId} has no associated call`);
   if (!event.voice_session_id) throw new VoiceInternalError(`Event ${eventId} has no associated session`);

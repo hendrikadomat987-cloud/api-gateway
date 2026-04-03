@@ -47,7 +47,8 @@ export type VoiceEventProcessingStatus =
   | 'normalized'
   | 'processed'
   | 'failed'
-  | 'ignored';
+  | 'ignored'
+  | 'dead_letter';
 
 export type VoiceToolInvocationStatus = 'started' | 'succeeded' | 'failed' | 'cancelled';
 
@@ -178,6 +179,8 @@ export interface VoiceEvent {
   processing_status: VoiceEventProcessingStatus;
   processing_error_code?: string;
   processing_error_message?: string;
+  retry_count: number;
+  last_retry_at?: string;
   created_at: string;
 }
 
