@@ -23,3 +23,23 @@ export function createLogger(config: Pick<Config, 'LOG_LEVEL' | 'NODE_ENV'>): pi
     },
   });
 }
+
+/**
+ * Shared logger for service-layer code that runs outside of request handlers
+ * (no access to request.log). Level and format mirror createLogger() but are
+ * read from process.env at module init so no config object is needed.
+ *
+ * Use .child({ name: 'component' }) to create named children.
+ */
+export const serviceLogger: pino.Logger = pino({
+  level: (process.env.LOG_LEVEL ?? 'info') as pino.LevelWithSilent,
+  ...(process.env.NODE_ENV === 'development' && {
+    transport: {
+      target: 'pino-pretty',
+      options: { colorize: true, translateTime: 'HH:MM:ss.l', ignore: 'pid,hostname' },
+    },
+  }),
+  serializers: {
+    err: pino.stdSerializers.err,
+  },
+});

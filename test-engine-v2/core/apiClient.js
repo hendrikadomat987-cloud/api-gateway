@@ -1,5 +1,6 @@
 'use strict';
 
+const { createHmac } = require('node:crypto');
 const axios  = require('axios');
 const config = require('../config/config');
 const logger = require('./logger');
@@ -57,7 +58,7 @@ class ApiClient {
     return h;
   }
 
-  async _request(method, path, data, params) {
+  async _request(method, path, data, params, extraHeaders = {}) {
     const url = `${this._baseUrl}${path}`;
     logger.debug(`${method} ${url}`, data ? JSON.stringify(data) : '');
 
@@ -65,7 +66,7 @@ class ApiClient {
       axios({
         method,
         url,
-        headers:        this._headers(),
+        headers:        { ...this._headers(), ...extraHeaders },
         data,
         params,
         timeout:        config.timeoutMs,
@@ -77,10 +78,10 @@ class ApiClient {
     return response;
   }
 
-  get(path, params)     { return this._request('GET',    path, undefined, params); }
-  post(path, data)      { return this._request('POST',   path, data); }
-  put(path, data)       { return this._request('PUT',    path, data); }
-  delete(path)          { return this._request('DELETE', path); }
+  get(path, params)               { return this._request('GET',    path, undefined, params); }
+  post(path, data, extraHeaders)  { return this._request('POST',   path, data, undefined, extraHeaders); }
+  put(path, data)                 { return this._request('PUT',    path, data); }
+  delete(path)                    { return this._request('DELETE', path); }
 }
 
 /**
@@ -106,11 +107,19 @@ const defaultClient = createClient();
 /**
  * POST /voice/providers/vapi/webhook
  * Public endpoint — no Authorization header.
+ * Signs the request body with HMAC-SHA256 using VAPI_WEBHOOK_SECRET.
  *
  * @param {object} message - VAPI webhook payload
  */
 function sendVoiceWebhook(message) {
-  return createClient({ token: '' }).post('/voice/providers/vapi/webhook', message);
+  const bodyStr = JSON.stringify(message);
+  const secret  = process.env.VAPI_WEBHOOK_SECRET || '';
+  const sig     = createHmac('sha256', secret).update(bodyStr).digest('hex');
+  return createClient({ token: '' }).post(
+    '/voice/providers/vapi/webhook',
+    message,
+    { 'x-vapi-signature': sig },
+  );
 }
 
 /**

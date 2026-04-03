@@ -10,7 +10,7 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_ISSUER: z.string().optional(),
   JWT_AUDIENCE: z.string().optional(),
-  VAPI_WEBHOOK_SECRET: z.string().optional(),
+  VAPI_WEBHOOK_SECRET: z.string().min(1, 'VAPI_WEBHOOK_SECRET is required'),
   // ── n8n forwarding ─────────────────────────────────────────────────────────
   N8N_BASE_URL: z.string().url('N8N_BASE_URL must be a valid URL'),
   N8N_WEBHOOK_SECRET: z.string().optional(),

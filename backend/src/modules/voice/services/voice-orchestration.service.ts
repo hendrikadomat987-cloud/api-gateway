@@ -1,4 +1,5 @@
 // src/modules/voice/services/voice-orchestration.service.ts
+import { serviceLogger } from '../../../logger/index.js';
 import type { VoiceContext, ToolInput } from '../../../types/voice.js';
 import type { VapiWebhookMessage, VapiEndOfCallReportMessage } from '../providers/vapi/vapi-types.js';
 import { resolveTenantFromCall } from './tenant-resolution.service.js';
@@ -14,6 +15,8 @@ import {
   buildToolCallsResponse,
 } from '../providers/vapi/vapi-adapter.js';
 import { mapVapiMessageTypeToEventType, mapVapiMessageToNormalizedPayload } from '../mappers/voice-event.mapper.js';
+
+const log = serviceLogger.child({ name: 'voice.orchestration' });
 
 /**
  * Top-level orchestrator for inbound VAPI webhook messages.
@@ -33,6 +36,8 @@ export async function handleVapiMessage(
   const calledNumber = extractCalledNumber(message);
   const providerAgentId = extractProviderAgentId(message);
   const providerCallId = extractProviderCallId(message);
+
+  log.info({ messageType: message.type, providerCallId, providerAgentId }, 'incoming VAPI webhook');
 
   // Step 1: Resolve tenant — hard failure if not found
   const agent = await resolveTenantFromCall({ calledNumber, providerAgentId });

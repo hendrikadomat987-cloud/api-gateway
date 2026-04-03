@@ -1,4 +1,5 @@
 // src/modules/voice/services/event-processing.service.ts
+import { serviceLogger } from '../../../logger/index.js';
 import {
   findEventByProviderEventId,
   createEvent,
@@ -6,6 +7,8 @@ import {
 import { VoiceInternalError } from '../../../errors/voice-errors.js';
 import { buildIdempotencyKey } from '../utils/idempotency.js';
 import type { VoiceEvent, VoiceEventProcessingStatus } from '../../../types/voice.js';
+
+const log = serviceLogger.child({ name: 'voice.event-processing' });
 
 /**
  * Persists a voice event with idempotency protection.
@@ -44,27 +47,34 @@ export async function processEvent(opts: {
     opts.providerEventId ??
     buildIdempotencyKey(voiceCallId ?? voiceProviderId, eventType, rawPayload);
 
-  const existing = await findEventByProviderEventId(
-  opts.tenantId,
-  voiceProviderId,
-  providerEventId
-);
+  const ctx = { tenantId, voiceProviderId, voiceCallId, voiceSessionId, eventType, providerEventId };
+
+  log.info(ctx, 'processing voice event');
+
+  const existing = await findEventByProviderEventId(tenantId, voiceProviderId, providerEventId);
   if (existing) {
-    // Return existing event rather than throwing — idempotent re-delivery is normal
+    log.info({ ...ctx, eventId: existing.id }, 'duplicate voice event — returning existing (idempotent)');
     return existing;
   }
 
-  return createEvent({
-    tenant_id: tenantId,
-    voice_provider_id: voiceProviderId,
-    voice_call_id: voiceCallId,
-    voice_session_id: voiceSessionId,
-    provider_event_id: providerEventId,
-    event_type: eventType,
-    event_ts: eventTs,
-    raw_payload_json: rawPayload,
-    normalized_payload_json: normalizedPayload,
-    processing_status: processingStatus,
-  });
+  try {
+    const event = await createEvent({
+      tenant_id: tenantId,
+      voice_provider_id: voiceProviderId,
+      voice_call_id: voiceCallId,
+      voice_session_id: voiceSessionId,
+      provider_event_id: providerEventId,
+      event_type: eventType,
+      event_ts: eventTs,
+      raw_payload_json: rawPayload,
+      normalized_payload_json: normalizedPayload,
+      processing_status: processingStatus,
+    });
+    log.info({ ...ctx, eventId: event.id }, 'voice event persisted');
+    return event;
+  } catch (err) {
+    log.error({ ...ctx, err }, 'failed to persist voice event');
+    throw err;
+  }
 }
 
