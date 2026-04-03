@@ -21,7 +21,7 @@ const {
   uniqueVoiceCallId,
 } = require('../../core/factories');
 
-const { expectSuccess } = require('../../core/assertions');
+const { expectSuccess, expectUnauthorized, assertTenantIsolationFailure } = require('../../core/assertions');
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,19 @@ describe('voice / session-discovery', () => {
     expect(session.id).toBeDefined();
     expect(session.voice_call_id).toBe(internalCallId);
     expect(session.status).toBe('active');
+  });
+
+  it('GET /voice/calls/:id/session — no token → 401, invalid token → 401', async () => {
+    const noToken      = await getCallSession('', internalCallId);
+    const invalidToken = await getCallSession(config.tokens.invalid, internalCallId);
+
+    expectUnauthorized(noToken);
+    expectUnauthorized(invalidToken);
+  });
+
+  it('Tenant B cannot read Tenant A session via call discovery', async () => {
+    const res = await getCallSession(config.tokens.tenantB, internalCallId);
+    assertTenantIsolationFailure(res, internalCallId);
   });
 
   it('GET /voice/sessions/:id → returns the same session resolved via call discovery', async () => {
