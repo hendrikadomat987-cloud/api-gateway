@@ -1,4 +1,4 @@
-import type { VoiceEvent } from '../../../types/voice.js';
+import type { VoiceEvent, VoiceEventProcessingStatus } from '../../../types/voice.js';
 import { withTenant } from '../../../lib/db.js';
 
 export async function findEventByProviderEventId(
@@ -86,5 +86,26 @@ export async function createEvent(
     );
 
     return result.rows[0]!;
+  });
+}
+
+export async function updateEventStatus(
+  tenantId: string,
+  eventId: string,
+  status: VoiceEventProcessingStatus,
+  errorMessage?: string,
+): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    await client.query(
+      `
+      UPDATE voice_events
+      SET
+        processing_status        = $3,
+        processing_error_message = $4
+      WHERE tenant_id = $1
+        AND id = $2
+      `,
+      [tenantId, eventId, status, errorMessage ?? null],
+    );
   });
 }

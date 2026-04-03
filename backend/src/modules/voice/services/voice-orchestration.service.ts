@@ -5,6 +5,7 @@ import type { VapiWebhookMessage, VapiEndOfCallReportMessage } from '../provider
 import { resolveTenantFromCall } from './tenant-resolution.service.js';
 import { getOrCreateCallAndSession, markCallEnded } from './call-session.service.js';
 import { processEvent } from './event-processing.service.js';
+import { updateEventStatus } from '../repositories/voice-events.repository.js';
 import { dispatchTools } from '../orchestration/resolve-tool.js';
 import {
   extractCallerId,
@@ -57,12 +58,12 @@ export async function handleVapiMessage(
     session,
   };
 
-  // Step 3: Persist raw event
+  // Step 3: Persist raw event as 'received'
   const rawPayload = message as unknown as Record<string, unknown>;
   const normalizedPayload = mapVapiMessageToNormalizedPayload(message);
   const eventType = mapVapiMessageTypeToEventType(message.type) ?? message.type;
 
-  await processEvent({
+  const voiceEvent = await processEvent({
     tenantId: agent.tenant_id,
     voiceProviderId: agent.voice_provider_id,
     voiceCallId: call.id,
@@ -74,33 +75,51 @@ export async function handleVapiMessage(
     eventTs: message.timestamp,
   });
 
-  // Step 4: Route by message type
-  switch (message.type) {
-    case 'tool-calls': {
-      const tools: ToolInput[] = extractToolInputs(message);
-      const results = await dispatchTools(voiceContext, tools);
-      return buildToolCallsResponse(
-        results.map((r, i) => ({ ...r, tool_call_id: (tools[i] as any)._vapiToolCallId })),
-      );
+  // Step 4: Route by message type — update event status on outcome
+  try {
+    let result: unknown;
+
+    switch (message.type) {
+      case 'tool-calls': {
+        const tools: ToolInput[] = extractToolInputs(message);
+        const results = await dispatchTools(voiceContext, tools);
+        result = buildToolCallsResponse(
+          results.map((r, i) => ({ ...r, tool_call_id: (tools[i] as any)._vapiToolCallId })),
+        );
+        break;
+      }
+
+      case 'end-of-call-report': {
+        const report = message as VapiEndOfCallReportMessage;
+        await markCallEnded({
+          tenantId: agent.tenant_id,
+          callId: call.id,
+          durationSeconds: report.durationSeconds,
+          summary: report.summary,
+        });
+        result = { success: true, accepted: true, request_id: '' };
+        break;
+      }
+
+      case 'status-update':
+        // TODO: Map VAPI status to internal VoiceCallStatus and persist
+        result = { success: true, accepted: true, request_id: '' };
+        break;
+
+      default:
+        result = { success: true, accepted: true, request_id: '' };
     }
 
-    case 'end-of-call-report': {
-      const report = message as VapiEndOfCallReportMessage;
-       await markCallEnded({
-         tenantId: agent.tenant_id,
-         callId: call.id,
-         durationSeconds: report.durationSeconds,
-         summary: report.summary,
-      });
-      return { success: true, accepted: true, request_id: '' };
-    }
-
-    case 'status-update':
-      // TODO: Map VAPI status to internal VoiceCallStatus and persist
-      return { success: true, accepted: true, request_id: '' };
-
-    default:
-      return { success: true, accepted: true, request_id: '' };
+    await updateEventStatus(agent.tenant_id, voiceEvent.id, 'processed');
+    log.info({ tenantId: agent.tenant_id, eventId: voiceEvent.id, eventType }, 'voice event processed');
+    return result;
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'processing error';
+    await updateEventStatus(agent.tenant_id, voiceEvent.id, 'failed', errorMessage).catch((updateErr) => {
+      log.error({ eventId: voiceEvent.id, err: updateErr }, 'failed to update event status after processing failure');
+    });
+    log.error({ tenantId: agent.tenant_id, eventId: voiceEvent.id, eventType, err }, 'voice event processing failed');
+    throw err;
   }
 }
 
