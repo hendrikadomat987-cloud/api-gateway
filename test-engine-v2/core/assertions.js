@@ -341,6 +341,17 @@ function assertEventTimestamp(event) {
 }
 
 /**
+ * Assert an event has the expected processing_status value.
+ *
+ * @param {object} event          - a voice_events row (from getVoiceCallEvents)
+ * @param {string} expectedStatus - 'received' | 'processed' | 'failed'
+ */
+function assertEventProcessingStatus(event, expectedStatus) {
+  expect(event).toBeDefined();
+  expect(event.processing_status).toBe(expectedStatus);
+}
+
+/**
  * Assert cross-tenant isolation — the response must NOT contain voice data.
  * Accepts 404, empty data, or a well-formed empty list.
  *
@@ -385,6 +396,7 @@ module.exports = {
   assertEventExists,
   assertSingleEvent,
   assertEventTimestamp,
+  assertEventProcessingStatus,
   assertTenantIsolationFailure,
   // Legacy
   assertStatus,

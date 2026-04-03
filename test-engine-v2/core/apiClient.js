@@ -177,16 +177,48 @@ function postVoiceHandover(token, sessionId, body = {}) {
   return createClient({ token }).post(`/voice/sessions/${sessionId}/handover`, body);
 }
 
+/**
+ * POST /voice/providers/vapi/webhook — with an explicit signature value.
+ * Intended for signature-enforcement tests.
+ *
+ * Pass `null` to omit the x-vapi-signature header entirely (missing-signature case).
+ * Pass any string to send that exact value (wrong-signature case or valid-signature case).
+ *
+ * @param {object} message  - VAPI webhook payload
+ * @param {string|null} sig - signature string, or null to omit the header
+ */
+function sendVoiceWebhookSigned(message, sig) {
+  const extraHeaders = sig !== null ? { 'x-vapi-signature': sig } : {};
+  return createClient({ token: '' }).post(
+    '/voice/providers/vapi/webhook',
+    message,
+    extraHeaders,
+  );
+}
+
+/**
+ * POST /voice/events/:id/retry
+ * Triggers a manual replay of a failed voice event.
+ *
+ * @param {string} token
+ * @param {string} eventId
+ */
+function retryVoiceEvent(token, eventId) {
+  return createClient({ token }).post(`/voice/events/${eventId}/retry`, {});
+}
+
 module.exports = {
   ApiClient,
   createClient,
   defaultClient,
   // Voice
   sendVoiceWebhook,
+  sendVoiceWebhookSigned,
   listVoiceCalls,
   getVoiceCall,
   getVoiceCallEvents,
   getVoiceSession,
   postVoiceFallback,
   postVoiceHandover,
+  retryVoiceEvent,
 };
