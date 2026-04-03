@@ -23,7 +23,7 @@ const {
   uniqueVoiceCallId,
 } = require('../../core/factories');
 
-const { expectSuccess, expectUnauthorized, assertTenantIsolationFailure } = require('../../core/assertions');
+const { expectSuccess, expectError, expectUnauthorized, assertTenantIsolationFailure } = require('../../core/assertions');
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -106,6 +106,21 @@ describe('voice / session-discovery', () => {
     const updatedCall = expectSuccess(callRes);
 
     expect(updatedCall.status).toBe('fallback');
+  });
+
+  it('POST /voice/sessions/:id/fallback — unknown session ID → 404 VOICE_SESSION_NOT_FOUND', async () => {
+    const res = await postVoiceFallback(TOKEN, '00000000-0000-0000-0000-000000000000');
+    expectError(res, 404, 'VOICE_SESSION_NOT_FOUND');
+  });
+
+  it('POST /voice/sessions/:id/fallback — no token → 401, invalid token → 401', async () => {
+    const probeId = '00000000-0000-0000-0000-000000000000';
+
+    const noToken      = await postVoiceFallback('', probeId);
+    const invalidToken = await postVoiceFallback(config.tokens.invalid, probeId);
+
+    expectUnauthorized(noToken);
+    expectUnauthorized(invalidToken);
   });
 
   it('GET /voice/sessions/:id → returns the same session resolved via call discovery', async () => {
