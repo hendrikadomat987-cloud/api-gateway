@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
 import { resolveTenantContext } from '../../middleware/tenantContext.js';
-import { listCallsHandler, getCallHandler } from '../../modules/voice/controllers/internal/calls.controller.js';
+import { listCallsHandler, getCallHandler, getCallSessionHandler } from '../../modules/voice/controllers/internal/calls.controller.js';
 import {
   getSessionHandler,
   setSessionFallbackHandler,
@@ -23,6 +23,13 @@ export async function voiceInternalRoutes(app: FastifyInstance): Promise<void> {
     '/api/v1/voice/calls/:id',
     { preHandler },
     getCallHandler,
+  );
+
+  // ── Call → Session discovery (C.2.2.1) ───────────────────────────────────
+  app.get<{ Params: { id: string } }>(
+    '/api/v1/voice/calls/:id/session',
+    { preHandler },
+    getCallSessionHandler,
   );
 
   // ── Sessions (C.2.3) ───────────────────────────────────────────────────────

@@ -149,6 +149,16 @@ function getVoiceCallEvents(token, callId) {
 }
 
 /**
+ * GET /voice/calls/:id/session
+ * Resolves the active session for a call by internal call UUID.
+ * @param {string} token
+ * @param {string} callId
+ */
+function getCallSession(token, callId) {
+  return createClient({ token }).get(`/voice/calls/${callId}/session`);
+}
+
+/**
  * GET /voice/sessions/:id
  * @param {string} token
  * @param {string} sessionId
@@ -216,6 +226,7 @@ module.exports = {
   sendVoiceWebhookSigned,
   listVoiceCalls,
   getVoiceCall,
+  getCallSession,
   getVoiceCallEvents,
   getVoiceSession,
   postVoiceFallback,
