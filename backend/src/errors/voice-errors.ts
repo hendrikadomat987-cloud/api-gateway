@@ -58,6 +58,20 @@ export class VoiceNumberNotFoundError extends VoiceError {
 
 // ── Session / Runtime ─────────────────────────────────────────────────────────
 
+export class VoiceEventNotFoundError extends VoiceError {
+  constructor(eventId: string) {
+    super(404, 'VOICE_EVENT_NOT_FOUND', `Voice event not found: ${eventId}`);
+    this.name = 'VoiceEventNotFoundError';
+  }
+}
+
+export class VoiceEventNotRetryableError extends VoiceError {
+  constructor(eventId: string, status: string) {
+    super(409, 'VOICE_EVENT_NOT_RETRYABLE', `Event ${eventId} is not retryable (status: ${status})`);
+    this.name = 'VoiceEventNotRetryableError';
+  }
+}
+
 export class VoiceCallNotFoundError extends VoiceError {
   constructor(callId: string) {
     super(404, 'VOICE_CALL_NOT_FOUND', `Voice call not found: ${callId}`);

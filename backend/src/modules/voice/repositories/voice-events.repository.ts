@@ -1,6 +1,45 @@
 import type { VoiceEvent, VoiceEventProcessingStatus } from '../../../types/voice.js';
 import { withTenant } from '../../../lib/db.js';
 
+export async function findEventById(
+  tenantId: string,
+  eventId: string,
+): Promise<VoiceEvent | null> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query<VoiceEvent>(
+      `
+      SELECT *
+      FROM voice_events
+      WHERE tenant_id = $1
+        AND id = $2
+      LIMIT 1
+      `,
+      [tenantId, eventId],
+    );
+
+    return result.rows[0] ?? null;
+  });
+}
+
+export async function listFailedEvents(
+  tenantId: string,
+): Promise<VoiceEvent[]> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query<VoiceEvent>(
+      `
+      SELECT *
+      FROM voice_events
+      WHERE tenant_id = $1
+        AND processing_status = 'failed'
+      ORDER BY created_at DESC
+      `,
+      [tenantId],
+    );
+
+    return result.rows;
+  });
+}
+
 export async function findEventByProviderEventId(
   tenantId: string,
   voiceProviderId: string,

@@ -7,7 +7,7 @@ import {
   setSessionFallbackHandler,
   setSessionHandoverHandler,
 } from '../../modules/voice/controllers/internal/sessions.controller.js';
-import { listEventsHandler } from '../../modules/voice/controllers/internal/events.controller.js';
+import { listEventsHandler, retryEventHandler } from '../../modules/voice/controllers/internal/events.controller.js';
 import { listToolInvocationsHandler } from '../../modules/voice/controllers/internal/tools.controller.js';
 
 const preHandler = [authenticate, resolveTenantContext];
@@ -37,6 +37,13 @@ export async function voiceInternalRoutes(app: FastifyInstance): Promise<void> {
     '/api/v1/voice/calls/:id/events',
     { preHandler },
     listEventsHandler,
+  );
+
+  // ── Event retry (C.2.6) ───────────────────────────────────────────────────
+  app.post<{ Params: { id: string } }>(
+    '/api/v1/voice/events/:id/retry',
+    { preHandler },
+    retryEventHandler,
   );
 
   // ── Tool invocations (C.2.5) ──────────────────────────────────────────────

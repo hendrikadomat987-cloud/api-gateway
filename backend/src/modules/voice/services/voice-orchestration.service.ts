@@ -5,7 +5,13 @@ import type { VapiWebhookMessage, VapiEndOfCallReportMessage } from '../provider
 import { resolveTenantFromCall } from './tenant-resolution.service.js';
 import { getOrCreateCallAndSession, markCallEnded } from './call-session.service.js';
 import { processEvent } from './event-processing.service.js';
-import { updateEventStatus } from '../repositories/voice-events.repository.js';
+import {
+  findEventById,
+  updateEventStatus,
+} from '../repositories/voice-events.repository.js';
+import { findCallById } from '../repositories/voice-calls.repository.js';
+import { findAgentByIdForTenant } from '../repositories/voice-agents.repository.js';
+import { findSessionById } from '../repositories/voice-sessions.repository.js';
 import { dispatchTools } from '../orchestration/resolve-tool.js';
 import {
   extractCallerId,
@@ -16,6 +22,13 @@ import {
   buildToolCallsResponse,
 } from '../providers/vapi/vapi-adapter.js';
 import { mapVapiMessageTypeToEventType, mapVapiMessageToNormalizedPayload } from '../mappers/voice-event.mapper.js';
+import {
+  VoiceEventNotFoundError,
+  VoiceEventNotRetryableError,
+  VoiceCallNotFoundError,
+  VoiceSessionNotFoundError,
+  VoiceInternalError,
+} from '../../../errors/voice-errors.js';
 
 const log = serviceLogger.child({ name: 'voice.orchestration' });
 
@@ -76,50 +89,113 @@ export async function handleVapiMessage(
   });
 
   // Step 4: Route by message type — update event status on outcome
+  return dispatchAndSettle(agent.tenant_id, voiceEvent.id, eventType, voiceContext, message);
+}
+
+/**
+ * Routes a VAPI message to the correct handler and updates the event status.
+ * Shared by the normal webhook path and the manual retry path.
+ */
+async function dispatchAndSettle(
+  tenantId: string,
+  eventId: string,
+  eventType: string,
+  voiceContext: VoiceContext,
+  message: VapiWebhookMessage,
+): Promise<unknown> {
   try {
-    let result: unknown;
-
-    switch (message.type) {
-      case 'tool-calls': {
-        const tools: ToolInput[] = extractToolInputs(message);
-        const results = await dispatchTools(voiceContext, tools);
-        result = buildToolCallsResponse(
-          results.map((r, i) => ({ ...r, tool_call_id: (tools[i] as any)._vapiToolCallId })),
-        );
-        break;
-      }
-
-      case 'end-of-call-report': {
-        const report = message as VapiEndOfCallReportMessage;
-        await markCallEnded({
-          tenantId: agent.tenant_id,
-          callId: call.id,
-          durationSeconds: report.durationSeconds,
-          summary: report.summary,
-        });
-        result = { success: true, accepted: true, request_id: '' };
-        break;
-      }
-
-      case 'status-update':
-        // TODO: Map VAPI status to internal VoiceCallStatus and persist
-        result = { success: true, accepted: true, request_id: '' };
-        break;
-
-      default:
-        result = { success: true, accepted: true, request_id: '' };
-    }
-
-    await updateEventStatus(agent.tenant_id, voiceEvent.id, 'processed');
-    log.info({ tenantId: agent.tenant_id, eventId: voiceEvent.id, eventType }, 'voice event processed');
+    const result = await routeVapiMessage(voiceContext, message);
+    await updateEventStatus(tenantId, eventId, 'processed');
+    log.info({ tenantId, eventId, eventType }, 'voice event processed');
     return result;
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'processing error';
-    await updateEventStatus(agent.tenant_id, voiceEvent.id, 'failed', errorMessage).catch((updateErr) => {
-      log.error({ eventId: voiceEvent.id, err: updateErr }, 'failed to update event status after processing failure');
+    await updateEventStatus(tenantId, eventId, 'failed', errorMessage).catch((updateErr) => {
+      log.error({ eventId, err: updateErr }, 'failed to update event status after processing failure');
     });
-    log.error({ tenantId: agent.tenant_id, eventId: voiceEvent.id, eventType, err }, 'voice event processing failed');
+    log.error({ tenantId, eventId, eventType, err }, 'voice event processing failed');
     throw err;
   }
+}
+
+/**
+ * Pure routing: maps a VAPI message type to the correct domain operation.
+ * Does not persist events or update statuses.
+ */
+async function routeVapiMessage(
+  voiceContext: VoiceContext,
+  message: VapiWebhookMessage,
+): Promise<unknown> {
+  switch (message.type) {
+    case 'tool-calls': {
+      const tools: ToolInput[] = extractToolInputs(message);
+      const results = await dispatchTools(voiceContext, tools);
+      return buildToolCallsResponse(
+        results.map((r, i) => ({ ...r, tool_call_id: (tools[i] as any)._vapiToolCallId })),
+      );
+    }
+
+    case 'end-of-call-report': {
+      const report = message as VapiEndOfCallReportMessage;
+      await markCallEnded({
+        tenantId: voiceContext.tenantId,
+        callId: voiceContext.call.id,
+        durationSeconds: report.durationSeconds,
+        summary: report.summary,
+      });
+      return { success: true, accepted: true, request_id: '' };
+    }
+
+    case 'status-update':
+      // TODO: Map VAPI status to internal VoiceCallStatus and persist
+      return { success: true, accepted: true, request_id: '' };
+
+    default:
+      return { success: true, accepted: true, request_id: '' };
+  }
+}
+
+/**
+ * Replays a failed voice event by reloading its stored raw payload and
+ * re-running the routing logic. Only events with processing_status = 'failed'
+ * are eligible. Idempotency keys are not re-evaluated — the event record
+ * already exists and only its status is updated on outcome.
+ */
+export async function replayFailedEvent(
+  tenantId: string,
+  eventId: string,
+): Promise<void> {
+  const event = await findEventById(tenantId, eventId);
+  if (!event) throw new VoiceEventNotFoundError(eventId);
+  if (event.processing_status !== 'failed') {
+    throw new VoiceEventNotRetryableError(eventId, event.processing_status);
+  }
+
+  log.info({ tenantId, eventId, eventType: event.event_type }, 'voice event retry requested');
+
+  if (!event.voice_call_id) throw new VoiceInternalError(`Event ${eventId} has no associated call`);
+  if (!event.voice_session_id) throw new VoiceInternalError(`Event ${eventId} has no associated session`);
+
+  const call = await findCallById(tenantId, event.voice_call_id);
+  if (!call) throw new VoiceCallNotFoundError(event.voice_call_id);
+
+  if (!call.voice_agent_id) throw new VoiceInternalError(`Call ${call.id} has no associated agent`);
+  const agent = await findAgentByIdForTenant(tenantId, call.voice_agent_id);
+  if (!agent) throw new VoiceInternalError(`Agent ${call.voice_agent_id} not found for retry`);
+
+  const session = await findSessionById(tenantId, event.voice_session_id);
+  if (!session) throw new VoiceSessionNotFoundError(event.voice_session_id);
+
+  const voiceContext: VoiceContext = {
+    tenantId,
+    agent,
+    track: session.track_type,
+    call,
+    session,
+  };
+
+  const message = event.raw_payload_json as unknown as VapiWebhookMessage;
+
+  await dispatchAndSettle(tenantId, eventId, event.event_type, voiceContext, message);
 }
 
