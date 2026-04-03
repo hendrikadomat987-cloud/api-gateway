@@ -60,7 +60,7 @@ const app = Fastify({
   await app.register(apiRoutes, { config });
 
   // ── Voice routes ───────────────────────────────────────────────────────────
-  await app.register(voicePublicRoutes);
+  await app.register(voicePublicRoutes, { config });
   await app.register(voiceInternalRoutes);
   await app.register(voiceToolsBookingRoutes);
   await app.register(voiceToolsRestaurantRoutes);

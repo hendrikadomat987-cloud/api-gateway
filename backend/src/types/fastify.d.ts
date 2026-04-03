@@ -22,5 +22,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** Tenant ID derived from JWT organization_id — never from client input. */
     tenantId: string;
+    /** Raw request body Buffer — populated only on routes that register the rawBody content-type parser. */
+    rawBody?: Buffer;
   }
 }
