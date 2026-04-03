@@ -1,5 +1,9 @@
-﻿node_modules
+node_modules/
 .env
-logs
+.env.*
+backend/dist/
+backend/node_modules/
+test-engine-v2/node_modules/
+coverage/
 *.log
-.tmp/
+*.zip
