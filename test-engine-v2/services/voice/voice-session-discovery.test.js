@@ -150,6 +150,21 @@ describe('voice / session-discovery', () => {
     expect(updatedCall.status).toBe('handover');
   });
 
+  it('POST /voice/sessions/:id/handover — unknown session ID → 404 VOICE_SESSION_NOT_FOUND', async () => {
+    const res = await postVoiceHandover(TOKEN, '00000000-0000-0000-0000-000000000000');
+    expectError(res, 404, 'VOICE_SESSION_NOT_FOUND');
+  });
+
+  it('POST /voice/sessions/:id/handover — no token → 401, invalid token → 401', async () => {
+    const probeId = '00000000-0000-0000-0000-000000000000';
+
+    const noToken      = await postVoiceHandover('', probeId);
+    const invalidToken = await postVoiceHandover(config.tokens.invalid, probeId);
+
+    expectUnauthorized(noToken);
+    expectUnauthorized(invalidToken);
+  });
+
   it('GET /voice/sessions/:id → returns the same session resolved via call discovery', async () => {
     const discoveryRes = await getCallSession(TOKEN, internalCallId);
     const discovered   = expectSuccess(discoveryRes);
