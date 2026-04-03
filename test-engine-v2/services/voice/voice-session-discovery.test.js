@@ -16,6 +16,7 @@ const {
   getVoiceSession,
   getVoiceCall,
   postVoiceFallback,
+  postVoiceHandover,
 } = require('../../core/apiClient');
 
 const {
@@ -121,6 +122,32 @@ describe('voice / session-discovery', () => {
 
     expectUnauthorized(noToken);
     expectUnauthorized(invalidToken);
+  });
+
+  it('POST /voice/sessions/:id/handover → session and call transition to handover', async () => {
+    const handoverCallId = uniqueVoiceCallId('test-call-handover');
+
+    const webhookRes = await sendVoiceWebhook(buildVapiStatusUpdate(handoverCallId));
+    if (webhookRes.status >= 300) {
+      throw new Error(`Handover setup — webhook rejected: ${JSON.stringify(webhookRes.data)}`);
+    }
+
+    const list = await listVoiceCalls(TOKEN);
+    const call = list.data.data.find((c) => c.provider_call_id === handoverCallId);
+    if (!call) throw new Error(`Handover setup — call not found: ${handoverCallId}`);
+
+    const discoveryRes = await getCallSession(TOKEN, call.id);
+    const session      = expectSuccess(discoveryRes);
+
+    const handoverRes    = await postVoiceHandover(TOKEN, session.id);
+    const updatedSession = expectSuccess(handoverRes);
+
+    expect(updatedSession.status).toBe('handover');
+
+    const callRes     = await getVoiceCall(TOKEN, call.id);
+    const updatedCall = expectSuccess(callRes);
+
+    expect(updatedCall.status).toBe('handover');
   });
 
   it('GET /voice/sessions/:id → returns the same session resolved via call discovery', async () => {
