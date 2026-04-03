@@ -288,6 +288,34 @@ function buildVapiStatusUpdate(callId = VOICE_CALL_ID_1, overrides = {}) {
 }
 
 /**
+ * VAPI tool-calls webhook payload.
+ * Sent by the provider when the AI assistant invokes a tool during a call.
+ *
+ * @param {string} callId
+ * @param {string} toolName    - tool function name (e.g. 'create_callback_request')
+ * @param {object} [args]      - tool function arguments
+ */
+function buildVapiToolCall(callId, toolName, args = {}) {
+  return {
+    message: {
+      type:         'tool-calls',
+      call:         _buildVapiCall(callId),
+      timestamp:    new Date().toISOString(),
+      toolCallList: [
+        {
+          id:       `tc-${Date.now()}-${seq()}`,
+          type:     'function',
+          function: {
+            name:      toolName,
+            arguments: args,
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
  * VAPI end-of-call-report webhook payload.
  * Sent by the provider when the call ends. Backend sets status → completed.
  *
@@ -337,6 +365,7 @@ module.exports = {
   // Voice / VAPI
   uniqueVoiceCallId,
   buildVapiStatusUpdate,
+  buildVapiToolCall,
   buildVapiEndOfCallReport,
   buildVoiceJwt,
   VAPI_ASSISTANT_ID,
