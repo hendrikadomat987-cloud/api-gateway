@@ -59,6 +59,12 @@ export type VoiceOrderContextStatus =
   | 'cancelled'
   | 'failed';
 
+export type VoiceCallbackRequestStatus =
+  | 'pending'
+  | 'forwarded'
+  | 'completed'
+  | 'failed';
+
 // ── Known internal event_type values (documentation / exhaustiveness helper) ──
 //
 // VoiceEvent.event_type is typed as `string` on the DB interface because the
@@ -209,6 +215,21 @@ export interface VoiceOrderContext {
   status: VoiceOrderContextStatus;
   order_context_json: Record<string, unknown>;
   confirmed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VoiceCallbackRequest {
+  id: string;
+  tenant_id: string;
+  voice_call_id: string;
+  voice_session_id: string;
+  track_type: VoiceSessionTrackType;
+  caller_number: string;
+  preferred_time?: string;
+  notes?: string;
+  status: VoiceCallbackRequestStatus;
+  n8n_workflow_id?: string;
   created_at: string;
   updated_at: string;
 }
