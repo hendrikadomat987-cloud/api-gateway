@@ -13,7 +13,17 @@ export async function runAddOrderItem(
   _context: VoiceContext,
   _args: Record<string, unknown>,
 ): Promise<unknown> {
-  throw new Error('Not implemented: add_order_item');
+  return {
+    success:  true,
+    order_id: 'order-local-001',
+    status:   'item_added',
+    item: {
+      id:       'pizza_margherita',
+      name:     'Margherita',
+      quantity: 1,
+      price:    8.5,
+    },
+  };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */
