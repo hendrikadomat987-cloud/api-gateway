@@ -23,13 +23,25 @@ export async function runAnswerBookingQuestion(
     throw new Error('answer_booking_question: N8N_BASE_URL is not configured');
   }
 
-  const response = await fetch(`${baseUrl}/webhook/answer-booking-question`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ question }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8_000);
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/webhook/answer-booking-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('answer_booking_question: n8n webhook timed out after 8 s');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error(`answer_booking_question: n8n webhook returned HTTP ${response.status}`);

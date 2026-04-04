@@ -89,7 +89,19 @@ export async function handleVapiMessage(
     eventTs: message.timestamp,
   });
 
-  // Step 4: Route by message type — update event status on outcome
+  // Step 4: Skip dispatch for duplicate events.
+  // processEvent() returns the pre-existing row on duplicate — its status will
+  // never be 'received' (that is only set on a freshly created row). Dispatching
+  // again would re-run tool handlers, markCallEnded, etc. for the same payload.
+  if (voiceEvent.processing_status !== 'received') {
+    log.info(
+      { tenantId: agent.tenant_id, eventId: voiceEvent.id, eventType, status: voiceEvent.processing_status },
+      'duplicate voice event — skipping dispatch (idempotent)',
+    );
+    return { success: true, accepted: true, request_id: voiceEvent.id };
+  }
+
+  // Step 5: Route by message type — update event status on outcome
   return dispatchAndSettle(agent.tenant_id, voiceEvent.id, eventType, voiceContext, message);
 }
 
