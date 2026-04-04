@@ -1,5 +1,6 @@
 // src/modules/voice/orchestration/resolve-tool.ts
 import { VoiceToolNotAllowedError } from '../../../errors/voice-errors.js';
+import { updateSession } from '../repositories/voice-sessions.repository.js';
 import type { VoiceContext, ToolInput, ToolResult } from '../../../types/voice.js';
 
 // ── Booking tools ─────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ export async function dispatchTools(
         return { name: tool.name, success: true, result };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Tool execution failed';
+        await updateSession(context.tenantId, context.session.id, { status: 'failed' }).catch(() => undefined);
         return { name: tool.name, success: false, error: message };
       }
     }),
