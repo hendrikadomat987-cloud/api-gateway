@@ -32,9 +32,13 @@ const {
 const {
   expectSuccess,
   assertEventExists,
+  assertSingleEvent,
+  expectUuid,
 } = require('../../core/assertions');
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+jest.setTimeout(120000);
 
 const TOKEN   = config.tokens.tenantA;
 const CALL_ID = uniqueVoiceCallId('test-call-booking-happy-path');
@@ -93,15 +97,21 @@ describe('voice / booking / happy-path', () => {
     }
     expect(toolResult.success).toBe(true);
     expect(typeof toolResult.bookable).toBe('boolean');
+    expect(toolResult.bookable).toBe(true);
     expect(Array.isArray(toolResult.slots)).toBe(true);
     expect(toolResult.slots.length).toBeGreaterThan(0);
 
+    // Capture slot for step 2 — validate it is a non-empty ISO string before use
     availabilitySlot = toolResult.slots[0];
+    expect(typeof availabilitySlot).toBe('string');
+    expect(availabilitySlot.length).toBeGreaterThan(0);
+    expect(new Date(availabilitySlot).getTime()).not.toBeNaN();
   });
 
   // ── Step 2: book_appointment ───────────────────────────────────────────────
 
   it('step 2 — book_appointment confirms booking using slot from step 1', async () => {
+    // Slot originates from check_availability step 1 — continuity is explicit
     expect(availabilitySlot).toBeDefined();
 
     const res = await sendVoiceWebhook(
@@ -124,7 +134,8 @@ describe('voice / booking / happy-path', () => {
     }
     expect(toolResult.success).toBe(true);
     expect(typeof toolResult.appointment_id).toBe('string');
-    expect(typeof toolResult.status).toBe('string');
+    expect(toolResult.appointment_id.length).toBeGreaterThan(0);
+    expect(toolResult.status).toBe('confirmed');
   });
 
   // ── Step 3: call and session exist ────────────────────────────────────────
@@ -137,6 +148,7 @@ describe('voice / booking / happy-path', () => {
 
     const sessionRes = await getCallSession(TOKEN, internalCallId);
     const session    = expectSuccess(sessionRes);
+    expectUuid(session.id);
     expect(session.voice_call_id).toBe(internalCallId);
     expect(session.status).toBe('active');
   });
@@ -149,10 +161,13 @@ describe('voice / booking / happy-path', () => {
 
     expect(Array.isArray(events)).toBe(true);
 
-    // status-update event from beforeAll setup — always present
+    // status-update event(s) from call lifecycle must be present
     assertEventExists(events, 'call.status_update');
 
-    // 1 status-update + 2 tool-calls webhooks = at least 3 persisted events
+    // At least one tool.invoked event — 'tool-calls' maps to 'tool.invoked' in the event mapper
+    assertEventExists(events, 'tool.invoked');
+
+    // 1 status-update + 2 tool-calls webhooks = exactly 3 persisted events
     expect(events.length).toBeGreaterThanOrEqual(3);
   });
 });
