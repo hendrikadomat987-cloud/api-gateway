@@ -62,7 +62,8 @@
       "Bash(ssh -i \"$USERPROFILE/.ssh/id_ed25519_hetzner\" deploy@46.225.102.88 \"curl -s -X PUT   -H ''''X-N8N-API-KEY: $N8N_KEY''''   -H ''''Content-Type: application/json''''   -d @/tmp/cust_update_stripped.json   ''''http://172.18.0.4:5678/api/v1/workflows/$WF_ID'''' 2>&1\")",
       "Bash(N8N_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI WF_ID=DFNTfe6n054Jf1BV __NEW_LINE_dfd9987341fb3190__ node -e \":*)",
       "Bash(ssh -i $USERPROFILE/.ssh/id_ed25519_hetzner deploy@46.225.102.88 \"curl -s -X PUT   -H ''''X-N8N-API-KEY: $N8N_KEY''''   -H ''''Content-Type: application/json''''   -d @/tmp/cust_update_stripped.json   ''''http://172.18.0.4:5678/api/v1/workflows/$WF_ID'''' 2>&1\")",
-      "Bash(N8N_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI WF_ID=DFNTfe6n054Jf1BV __NEW_LINE_f36854bdef965d78__ node -e \":*)"
+      "Bash(N8N_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1M2U1NmM4My0wNmIwLTQ5YTQtYjc5My1iMzNkZmI5Yjg0YjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzE1MTBlNjUtZjMzMC00ODJjLThkMWQtNDQ5OTEyOGQ3NjVjIiwiaWF0IjoxNzczMjQxNjg1fQ.vB1f5hOP1wR4OtZb26rQI73NChxfShLL8eVKu3PAZtI WF_ID=DFNTfe6n054Jf1BV __NEW_LINE_f36854bdef965d78__ node -e \":*)",
+      "Bash(npm run:*)"
     ]
   }
 }
