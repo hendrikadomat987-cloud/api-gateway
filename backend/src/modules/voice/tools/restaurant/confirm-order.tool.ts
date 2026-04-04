@@ -5,15 +5,18 @@ import type { VoiceContext } from '../../../../types/voice.js';
 /**
  * confirm_order
  *
- * Finalises and submits the caller's order downstream (via n8n — TBD).
- *
- * TODO: Implement order submission and n8n handoff.
+ * Finalises and submits the caller's order.
+ * V1 stub — returns static deterministic confirmation data.
  */
 export async function runConfirmOrder(
   _context: VoiceContext,
   _args: Record<string, unknown>,
 ): Promise<unknown> {
-  throw new Error('Not implemented: confirm_order');
+  return {
+    success:  true,
+    order_id: 'order-local-001',
+    status:   'confirmed',
+  };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */

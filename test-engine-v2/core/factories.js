@@ -245,26 +245,29 @@ function uniqueVoiceCallId(prefix = 'test-call-voice') {
 // Tenant resolution via VAPI uses message.call.assistantId (provider_agent_id)
 // or message.call.customer.number (phone_number).
 // Set VAPI_ASSISTANT_ID in .env to match the provider_agent_id of a seeded
-// active voice_agents row for Tenant A.
-const VAPI_ASSISTANT_ID = process.env.VAPI_ASSISTANT_ID || '';
+// active voice_agents row for Tenant A (booking track).
+// Set VAPI_RESTAURANT_ASSISTANT_ID for the restaurant-track agent.
+const VAPI_ASSISTANT_ID            = process.env.VAPI_ASSISTANT_ID            || '';
+const VAPI_RESTAURANT_ASSISTANT_ID = process.env.VAPI_RESTAURANT_ASSISTANT_ID || '';
 
 /**
  * Build the VAPI call sub-object.
  * Includes all required schema fields: id, createdAt, updatedAt.
- * assistantId is included when VAPI_ASSISTANT_ID is configured — required for
- * tenant resolution if no matching phone number is registered.
+ * assistantId is included when provided (or falls back to VAPI_ASSISTANT_ID)
+ * — required for tenant resolution if no matching phone number is registered.
  *
  * @param {string} callId
+ * @param {string} [assistantId] - overrides VAPI_ASSISTANT_ID when supplied
  * @returns {object}
  */
-function _buildVapiCall(callId) {
+function _buildVapiCall(callId, assistantId = VAPI_ASSISTANT_ID) {
   const now = new Date().toISOString();
   const call = {
     id:        callId,
     createdAt: now,
     updatedAt: now,
   };
-  if (VAPI_ASSISTANT_ID) call.assistantId = VAPI_ASSISTANT_ID;
+  if (assistantId) call.assistantId = assistantId;
   return call;
 }
 
@@ -273,13 +276,14 @@ function _buildVapiCall(callId) {
  * Sent by the provider when a call transitions to in-progress.
  *
  * @param {string} [callId]
- * @param {object} [overrides] - merged into message object
+ * @param {object} [overrides]    - merged into message object
+ * @param {string} [assistantId]  - overrides the assistantId in call sub-object
  */
-function buildVapiStatusUpdate(callId = VOICE_CALL_ID_1, overrides = {}) {
+function buildVapiStatusUpdate(callId = VOICE_CALL_ID_1, overrides = {}, assistantId = undefined) {
   return {
     message: {
       type:      'status-update',
-      call:      _buildVapiCall(callId),
+      call:      _buildVapiCall(callId, assistantId),
       status:    'in-progress',
       timestamp: new Date().toISOString(),
       ...overrides,
@@ -292,14 +296,15 @@ function buildVapiStatusUpdate(callId = VOICE_CALL_ID_1, overrides = {}) {
  * Sent by the provider when the AI assistant invokes a tool during a call.
  *
  * @param {string} callId
- * @param {string} toolName    - tool function name (e.g. 'create_callback_request')
- * @param {object} [args]      - tool function arguments
+ * @param {string} toolName      - tool function name (e.g. 'create_callback_request')
+ * @param {object} [args]        - tool function arguments
+ * @param {string} [assistantId] - overrides the assistantId in call sub-object
  */
-function buildVapiToolCall(callId, toolName, args = {}) {
+function buildVapiToolCall(callId, toolName, args = {}, assistantId = undefined) {
   return {
     message: {
       type:         'tool-calls',
-      call:         _buildVapiCall(callId),
+      call:         _buildVapiCall(callId, assistantId),
       timestamp:    new Date().toISOString(),
       toolCallList: [
         {
@@ -369,6 +374,7 @@ module.exports = {
   buildVapiEndOfCallReport,
   buildVoiceJwt,
   VAPI_ASSISTANT_ID,
+  VAPI_RESTAURANT_ASSISTANT_ID,
   REQUEST_TYPES,
   REQUEST_STATUSES,
   RESOURCE_TYPES,

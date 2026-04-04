@@ -6,15 +6,17 @@ import type { VoiceContext } from '../../../../types/voice.js';
  * create_order
  *
  * Initialises a new order in the session context.
- * Order state is persisted in voice_order_contexts for the duration of the session.
- *
- * TODO: Implement order context initialisation.
+ * V1 stub — returns static deterministic order data.
  */
 export async function runCreateOrder(
   _context: VoiceContext,
   _args: Record<string, unknown>,
 ): Promise<unknown> {
-  throw new Error('Not implemented: create_order');
+  return {
+    success: true,
+    order_id: 'order-local-001',
+    status:   'created',
+  };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */
