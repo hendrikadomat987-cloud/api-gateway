@@ -34,6 +34,7 @@
     "test:voice:booking:availability": "jest services/voice/voice-booking-availability",
     "test:voice:booking:appointment": "jest services/voice/voice-booking-appointment",
     "test:voice:booking:question": "jest services/voice/voice-booking-question",
+    "test:voice:booking:happy-path": "jest services/voice/voice-booking-happy-path",
     "test:voice:prod": "jest services/voice/voice-signature-enforcement services/voice/voice-retry-api services/voice/voice-retry-worker --testTimeout=45000",
     "test:migrations": "jest --config jest.config.migrations.js",
     "test:migrations:schema": "jest --config jest.config.migrations.js migrations-schema",
