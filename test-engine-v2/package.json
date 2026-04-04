@@ -37,6 +37,7 @@
     "test:voice:booking:happy-path": "jest services/voice/voice-booking-happy-path",
     "test:voice:restaurant:happy-path": "jest services/voice/voice-restaurant-happy-path",
     "test:voice:restaurant:search": "jest services/voice/voice-restaurant-search",
+    "test:voice:restaurant:question": "jest services/voice/voice-restaurant-question",
     "test:voice:prod": "jest services/voice/voice-signature-enforcement services/voice/voice-retry-api services/voice/voice-retry-worker --testTimeout=45000",
     "test:migrations": "jest --config jest.config.migrations.js",
     "test:migrations:schema": "jest --config jest.config.migrations.js migrations-schema",

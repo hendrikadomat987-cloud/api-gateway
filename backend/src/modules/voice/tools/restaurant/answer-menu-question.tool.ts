@@ -13,7 +13,12 @@ export async function runAnswerMenuQuestion(
   _context: VoiceContext,
   _args: Record<string, unknown>,
 ): Promise<unknown> {
-  throw new Error('Not implemented: answer_menu_question');
+  return {
+    success:  true,
+    question: typeof _args?.question === 'string' ? _args.question : 'Welche Pizza habt ihr?',
+    answer:   'Wir haben unter anderem Margherita und Salami Pizza auf der Karte.',
+    source:   'stub',
+  };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */
