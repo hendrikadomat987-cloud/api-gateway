@@ -12,7 +12,7 @@ import {
 } from '../repositories/voice-events.repository.js';
 import { findCallById } from '../repositories/voice-calls.repository.js';
 import { findAgentByIdForTenant } from '../repositories/voice-agents.repository.js';
-import { findSessionById } from '../repositories/voice-sessions.repository.js';
+import { findSessionById, updateSession } from '../repositories/voice-sessions.repository.js';
 import { dispatchTools } from '../orchestration/resolve-tool.js';
 import {
   extractCallerId,
@@ -156,6 +156,7 @@ async function routeVapiMessage(
         durationSeconds: report.durationSeconds,
         summary: report.summary,
       });
+      await updateSession(voiceContext.tenantId, voiceContext.session.id, { status: 'completed' });
       return { success: true, accepted: true, request_id: '' };
     }
 
