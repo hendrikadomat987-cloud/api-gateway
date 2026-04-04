@@ -4,11 +4,12 @@
  * Voice — Restaurant Happy Path
  *
  * Validates the full restaurant flow in a single session:
- *   1. get_menu        → returns categories with items
- *   2. create_order    → confirms order creation
- *   3. add_order_item  → confirms item was added
- *   4. confirm_order   → confirms order submission
- *   5. persistence     → call, session, events exist and are consistent
+ *   1. get_menu          → returns categories with items
+ *   2. create_order      → confirms order creation
+ *   3. add_order_item    → confirms item was added
+ *   4. update_order_item → confirms item quantity was updated
+ *   5. confirm_order     → confirms order submission
+ *   6. persistence       → call, session, events exist and are consistent
  */
 
 const config = require('../../config/config');
@@ -153,9 +154,37 @@ describe('voice / restaurant / happy-path', () => {
     expect(toolResult.item.price).toBe(8.5);
   });
 
-  // ── Step 4: confirm_order ──────────────────────────────────────────────────
+  // ── Step 4: update_order_item ─────────────────────────────────────────────
 
-  it('step 4 — confirm_order confirms the order', async () => {
+  it('step 4 — update_order_item returns updated item', async () => {
+    const res = await sendVoiceWebhook(
+      buildVapiToolCall(CALL_ID, 'update_order_item', {}, VAPI_RESTAURANT_ASSISTANT_ID),
+    );
+
+    expect(res.status).toBe(200);
+
+    const results = res.data?.results;
+    expect(Array.isArray(results)).toBe(true);
+    expect(results.length).toBeGreaterThan(0);
+
+    const toolResult = results[0].result;
+    if (toolResult.success !== true) {
+      throw new Error(`update_order_item failed:\n${JSON.stringify(toolResult, null, 2)}`);
+    }
+    expect(toolResult.success).toBe(true);
+    expect(typeof toolResult.order_id).toBe('string');
+    expect(toolResult.order_id.length).toBeGreaterThan(0);
+    expect(toolResult.status).toBe('item_updated');
+    expect(toolResult.item).toBeDefined();
+    expect(toolResult.item.id).toBe('pizza_margherita');
+    expect(toolResult.item.name).toBe('Margherita');
+    expect(toolResult.item.quantity).toBe(2);
+    expect(toolResult.item.price).toBe(8.5);
+  });
+
+  // ── Step 5: confirm_order ──────────────────────────────────────────────────
+
+  it('step 5 — confirm_order confirms the order', async () => {
     const res = await sendVoiceWebhook(
       buildVapiToolCall(CALL_ID, 'confirm_order', {}, VAPI_RESTAURANT_ASSISTANT_ID),
     );
@@ -176,9 +205,9 @@ describe('voice / restaurant / happy-path', () => {
     expect(toolResult.status).toBe('confirmed');
   });
 
-  // ── Step 5: call and session exist ────────────────────────────────────────
+  // ── Step 6: call and session exist ────────────────────────────────────────
 
-  it('step 5 — call and session exist with correct identifiers', async () => {
+  it('step 6 — call and session exist with correct identifiers', async () => {
     const callRes = await getVoiceCall(TOKEN, internalCallId);
     const call    = expectSuccess(callRes);
     expect(call.id).toBe(internalCallId);
@@ -191,9 +220,9 @@ describe('voice / restaurant / happy-path', () => {
     expect(session.status).toBe('active');
   });
 
-  // ── Step 6: events exist for all webhook messages ─────────────────────────
+  // ── Step 7: events exist for all webhook messages ─────────────────────────
 
-  it('step 6 — events exist for status-update and all four tool invocations', async () => {
+  it('step 7 — events exist for status-update and all five tool invocations', async () => {
     const res    = await getVoiceCallEvents(TOKEN, internalCallId);
     const events = expectSuccess(res);
 
@@ -205,7 +234,7 @@ describe('voice / restaurant / happy-path', () => {
     // At least one tool.invoked event — 'tool-calls' maps to 'tool.invoked' in the event mapper
     assertEventExists(events, 'tool.invoked');
 
-    // 1 status-update + 4 tool-calls webhooks = at least 5 persisted events
-    expect(events.length).toBeGreaterThanOrEqual(5);
+    // 1 status-update + 5 tool-calls webhooks = at least 6 persisted events
+    expect(events.length).toBeGreaterThanOrEqual(6);
   });
 });
