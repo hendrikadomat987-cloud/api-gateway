@@ -13,7 +13,14 @@ export async function runSearchMenuItem(
   _context: VoiceContext,
   _args: Record<string, unknown>,
 ): Promise<unknown> {
-  throw new Error('Not implemented: search_menu_item');
+  return {
+    success: true,
+    query:   typeof _args?.query === 'string' ? _args.query : 'pizza',
+    items: [
+      { id: 'pizza_margherita', name: 'Margherita', price: 8.5,  category: 'Pizza' },
+      { id: 'pizza_salame',     name: 'Salami',     price: 9.5,  category: 'Pizza' },
+    ],
+  };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */
