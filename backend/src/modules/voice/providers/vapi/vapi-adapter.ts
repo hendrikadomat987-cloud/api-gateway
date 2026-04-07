@@ -29,8 +29,27 @@ export function extractProviderCallId(message: VapiWebhookMessage): string {
 }
 
 /**
+ * Normalises tc.function.arguments to a plain object.
+ * Vapi may deliver arguments as either a parsed object OR a JSON string.
+ * Never throws — returns {} on any parse failure.
+ */
+function normaliseArguments(raw: Record<string, unknown> | string): Record<string, unknown> {
+  if (typeof raw !== 'string') return raw;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // malformed JSON — fall through to safe default
+  }
+  return {};
+}
+
+/**
  * Extracts tool call inputs from a VAPI tool-calls message.
  * Returns an empty array for non-tool messages.
+ * Arguments are always normalised to Record<string, unknown>.
  */
 export function extractToolInputs(message: VapiWebhookMessage): ToolInput[] {
   if (message.type !== 'tool-calls') return [];
@@ -38,7 +57,7 @@ export function extractToolInputs(message: VapiWebhookMessage): ToolInput[] {
   const toolCallsMessage = message as import('./vapi-types.js').VapiToolCallsMessage;
   return toolCallsMessage.toolCallList.map((tc) => ({
     name: tc.function.name,
-    arguments: tc.function.arguments,
+    arguments: normaliseArguments(tc.function.arguments as Record<string, unknown> | string),
     _vapiToolCallId: tc.id, // retained for response mapping
   })) as ToolInput[];
 }

@@ -15,24 +15,30 @@ export type VapiMessageType =
 export interface VapiCallObject {
   id: string;
   orgId?: string;
-  createdAt: string;
-  updatedAt: string;
+  // Vapi omits createdAt/updatedAt on some event types (e.g. status-update mid-call)
+  createdAt?: string;
+  updatedAt?: string;
   type?: string;
   status?: string;
   phoneNumberId?: string;
   assistantId?: string;
+  // Vapi sends these as explicit null on end-of-call-report when the call ended
+  // before the fields were populated (e.g. SIP-completed calls).
   customer?: {
     number?: string;
     name?: string;
-  };
+    sipUri?: string;
+  } | null;
   phoneNumber?: {
     number?: string;
-  };
+  } | null;
 }
 
 export interface VapiToolCallFunction {
   name: string;
-  arguments: Record<string, unknown>;
+  // Real Vapi payloads may serialize arguments as a JSON string; callers must
+  // parse the string form before using it as a Record.
+  arguments: Record<string, unknown> | string;
 }
 
 export interface VapiToolCall {
@@ -44,7 +50,9 @@ export interface VapiToolCall {
 export interface VapiBaseMessage {
   type: VapiMessageType;
   call: VapiCallObject;
-  timestamp?: string;
+  // Vapi sends timestamp as a Unix-millisecond number on real payloads; some
+  // synthetic/older events use an ISO-8601 string — accept both.
+  timestamp?: string | number;
 }
 
 export interface VapiToolCallsMessage extends VapiBaseMessage {

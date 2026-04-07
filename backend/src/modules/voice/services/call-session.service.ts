@@ -8,7 +8,10 @@ import {
   findSessionByVoiceCallId,
   createSession,
 } from '../repositories/voice-sessions.repository.js';
+import { serviceLogger } from '../../../logger/index.js';
 import type { VoiceAgent, VoiceCall, VoiceSession } from '../../../types/voice.js';
+
+const log = serviceLogger.child({ name: 'voice.call-session' });
 
 /**
  * Manages the lifecycle of VoiceCalls and VoiceSessions.
@@ -27,9 +30,11 @@ export async function getOrCreateCallAndSession(opts: {
   const { agent, providerCallId, callerNumber } = opts;
 
   // ── Call ───────────────────────────────────────────────────────────────────
+  log.debug({ providerCallId, tenantId: agent.tenant_id }, '[voice:call:lookup]');
   let call = await findCallByProviderCallId(agent.tenant_id, providerCallId);
 
   if (!call) {
+    log.debug({ providerCallId }, '[voice:call:not-found]');
     call = await createCall({
       tenant_id: agent.tenant_id,
       voice_provider_id: agent.voice_provider_id,
@@ -44,9 +49,13 @@ export async function getOrCreateCallAndSession(opts: {
           ? agent.track_scope
           : 'unknown',
     });
+    log.info({ providerCallId, callId: call.id, tenantId: call.tenant_id }, '[voice:call:created]');
+  } else {
+    log.debug({ providerCallId, callId: call.id }, '[voice:call:found]');
   }
 
   // ── Session ────────────────────────────────────────────────────────────────
+  log.debug({ providerCallId, callId: call.id }, '[voice:session:lookup]');
   let session = await findSessionByVoiceCallId(call.tenant_id, call.id);
 
   if (!session) {
@@ -57,6 +66,10 @@ export async function getOrCreateCallAndSession(opts: {
 
     if (!trackType) {
       // TODO: Hard-fail here once track resolution is fully implemented.
+      log.warn(
+        { providerCallId, callId: call.id, agentId: agent.id, trackScope: agent.track_scope },
+        '[voice:session:skipped] — agent has no resolvable track_scope',
+      );
       throw new Error(`Cannot create session: agent ${agent.id} has no resolvable track_scope`);
     }
 
@@ -67,6 +80,9 @@ export async function getOrCreateCallAndSession(opts: {
       status: 'active',
       context_json: {},
     });
+    log.info({ providerCallId, callId: call.id, sessionId: session.id, trackType }, '[voice:session:created]');
+  } else {
+    log.debug({ providerCallId, callId: call.id, sessionId: session.id }, '[voice:session:found]');
   }
 
   return { call, session };

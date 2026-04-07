@@ -13,6 +13,10 @@ export function verifyVapiSignature(
   signature: string | undefined,
   secret: string,
 ): void {
+  // TEMP: set DISABLE_VAPI_SIGNATURE=true in .env to bypass during testing.
+  // Remove this guard to enforce signature validation in production.
+  if (process.env.DISABLE_VAPI_SIGNATURE === 'true') return;
+
   if (!signature) {
     throw new InvalidProviderSignatureError('Missing VAPI signature header');
   }

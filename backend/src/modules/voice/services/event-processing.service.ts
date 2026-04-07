@@ -28,7 +28,9 @@ export async function processEvent(opts: {
   rawPayload: Record<string, unknown>;
   normalizedPayload?: Record<string, unknown>;
   processingStatus?: VoiceEventProcessingStatus;
-  eventTs?: string;
+  // Vapi sends timestamp as a Unix-millisecond number on real payloads;
+  // accept both and normalise to ISO-8601 string for DB storage.
+  eventTs?: string | number;
 }): Promise<VoiceEvent> {
   const {
     tenantId,
@@ -39,8 +41,11 @@ export async function processEvent(opts: {
     rawPayload,
     normalizedPayload,
     processingStatus = 'received',
-    eventTs,
   } = opts;
+  const eventTs =
+    typeof opts.eventTs === 'number'
+      ? new Date(opts.eventTs).toISOString()
+      : opts.eventTs;
 
   // Deduplicate by provider_event_id when available
   const providerEventId =
@@ -49,7 +54,7 @@ export async function processEvent(opts: {
 
   const ctx = { tenantId, voiceProviderId, voiceCallId, voiceSessionId, eventType, providerEventId };
 
-  log.info(ctx, 'processing voice event');
+  log.info(ctx, '[voice:event:write]');
 
   const existing = await findEventByProviderEventId(tenantId, voiceProviderId, providerEventId);
   if (existing) {
@@ -73,7 +78,10 @@ export async function processEvent(opts: {
     log.info({ ...ctx, eventId: event.id }, 'voice event persisted');
     return event;
   } catch (err) {
-    log.error({ ...ctx, err }, 'failed to persist voice event');
+    log.error(
+      { ...ctx, err: err instanceof Error ? err.message : err },
+      '[voice:event:error]',
+    );
     throw err;
   }
 }

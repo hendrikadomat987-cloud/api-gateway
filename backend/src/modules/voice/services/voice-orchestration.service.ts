@@ -52,17 +52,60 @@ export async function handleVapiMessage(
   const providerAgentId = extractProviderAgentId(message);
   const providerCallId = extractProviderCallId(message);
 
-  log.info({ messageType: message.type, providerCallId, providerAgentId }, 'incoming VAPI webhook');
+  log.info(
+    { type: message.type, providerCallId },
+    '[voice:orchestrator:start]',
+  );
+  log.info(
+    {
+      messageType: message.type,
+      providerCallId,
+      providerAgentId,
+      phoneNumberId: message.call.phoneNumberId,
+      timestamp: message.timestamp,
+      callerNumber,
+      calledNumber,
+    },
+    'incoming VAPI webhook',
+  );
 
   // Step 1: Resolve tenant — hard failure if not found
-  const agent = await resolveTenantFromCall({ calledNumber, providerAgentId });
+  log.debug({ providerCallId }, '[voice:orchestrator:step] tenant');
+  let agent;
+  try {
+    agent = await resolveTenantFromCall({ calledNumber, providerAgentId });
+    log.info(
+      { providerCallId, tenantId: agent.tenant_id, agentId: agent.id, via: calledNumber ? 'phoneNumber' : 'assistant' },
+      '[voice:tenant:resolved]',
+    );
+  } catch (err) {
+    log.warn(
+      { providerCallId, calledNumber, providerAgentId, err: err instanceof Error ? err.message : err },
+      '[voice:tenant:failed]',
+    );
+    throw err;
+  }
 
   // Step 2: Ensure call + session exist
-  const { call, session } = await getOrCreateCallAndSession({
-    agent,
-    providerCallId,
-    callerNumber,
-  });
+  log.debug({ providerCallId }, '[voice:orchestrator:step] call+session');
+  let call, session;
+  try {
+    ({ call, session } = await getOrCreateCallAndSession({
+      agent,
+      providerCallId,
+      callerNumber,
+    }));
+    log.info(
+      { providerCallId, callId: call.id, sessionId: session.id, tenantId: agent.tenant_id },
+      'call and session ready',
+    );
+  } catch (err) {
+    log.warn(
+      { providerCallId, tenantId: agent.tenant_id, err: err instanceof Error ? err.message : err },
+      'call/session creation failed',
+    );
+    throw err;
+  }
 
   const voiceContext: VoiceContext = {
     tenantId: agent.tenant_id,
@@ -73,9 +116,22 @@ export async function handleVapiMessage(
   };
 
   // Step 3: Persist raw event as 'received'
+  log.debug({ providerCallId, callId: call.id }, '[voice:orchestrator:step] event');
   const rawPayload = message as unknown as Record<string, unknown>;
   const normalizedPayload = mapVapiMessageToNormalizedPayload(message);
   const eventType = mapVapiMessageTypeToEventType(message.type) ?? message.type;
+
+  // [a] After event-type mapping
+  log.debug(
+    {
+      providerMessageType: message.type,
+      mappedEventType: eventType,
+      providerCallId,
+      callId: call.id,
+      sessionId: session.id,
+    },
+    '[voice:event:mapped]',
+  );
 
   const voiceEvent = await processEvent({
     tenantId: agent.tenant_id,
@@ -88,6 +144,19 @@ export async function handleVapiMessage(
     processingStatus: 'received',
     eventTs: message.timestamp,
   });
+
+  // [b] After processEvent()
+  log.debug(
+    {
+      eventId: voiceEvent.id,
+      processingStatus: voiceEvent.processing_status,
+      eventType,
+      tenantId: agent.tenant_id,
+      callId: call.id,
+      sessionId: session.id,
+    },
+    '[voice:event:persisted]',
+  );
 
   // Step 4: Skip dispatch for duplicate events.
   // processEvent() returns the pre-existing row on duplicate — its status will
@@ -116,17 +185,26 @@ async function dispatchAndSettle(
   voiceContext: VoiceContext,
   message: VapiWebhookMessage,
 ): Promise<unknown> {
+  const logCtx = {
+    tenantId,
+    callId: voiceContext.call.id,
+    sessionId: voiceContext.session.id,
+    eventId,
+    eventType,
+  };
   try {
     const result = await routeVapiMessage(voiceContext, message);
     await updateEventStatus(tenantId, eventId, 'processed');
-    log.info({ tenantId, eventId, eventType }, 'voice event processed');
+    log.info(logCtx, 'voice event processed');
+    log.info({ ...logCtx, success: true }, '[voice:orchestrator:end]');
     return result;
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'processing error';
     await updateEventStatus(tenantId, eventId, 'failed', errorMessage).catch((updateErr) => {
-      log.error({ eventId, err: updateErr }, 'failed to update event status after processing failure');
+      log.error({ ...logCtx, err: updateErr }, 'failed to update event status after processing failure');
     });
-    log.error({ tenantId, eventId, eventType, err }, 'voice event processing failed');
+    log.error({ ...logCtx, err }, 'voice event processing failed');
+    log.warn({ ...logCtx, success: false, reason: errorMessage }, '[voice:orchestrator:end]');
     throw err;
   }
 }
@@ -142,10 +220,46 @@ async function routeVapiMessage(
   switch (message.type) {
     case 'tool-calls': {
       const tools: ToolInput[] = extractToolInputs(message);
+
+      // [c] Before tool dispatch
+      log.info(
+        {
+          callId: voiceContext.call.id,
+          sessionId: voiceContext.session.id,
+          track: voiceContext.track,
+          tools: tools.map((t) => ({ name: t.name, arguments: t.arguments })),
+        },
+        '[voice:tool:triggered]',
+      );
+
       const results = await dispatchTools(voiceContext, tools);
-      return buildToolCallsResponse(
+
+      // [d] After tool dispatch
+      log.info(
+        {
+          callId: voiceContext.call.id,
+          sessionId: voiceContext.session.id,
+          track: voiceContext.track,
+          results,
+        },
+        '[voice:tool:dispatched]',
+      );
+
+      const response = buildToolCallsResponse(
         results.map((r, i) => ({ ...r, tool_call_id: (tools[i] as any)._vapiToolCallId })),
       );
+
+      // [e] Before returning to Vapi
+      log.info(
+        {
+          callId: voiceContext.call.id,
+          sessionId: voiceContext.session.id,
+          response,
+        },
+        '[voice:tool:response]',
+      );
+
+      return response;
     }
 
     case 'end-of-call-report': {

@@ -3,7 +3,10 @@ import { findNumberByPhoneNumber } from '../repositories/voice-numbers.repositor
 import { findAgentByProviderAgentId, findAgentById } from '../repositories/voice-agents.repository.js';
 import { VoiceTenantNotResolvedError } from '../../../errors/voice-errors.js';
 import { normalizeToE164 } from '../utils/phone-number.js';
+import { serviceLogger } from '../../../logger/index.js';
 import type { VoiceAgent } from '../../../types/voice.js';
+
+const log = serviceLogger.child({ name: 'voice.tenant-resolution' });
 
 /**
  * Resolves the tenant from a VAPI webhook call.
@@ -22,6 +25,8 @@ export async function resolveTenantFromCall(opts: {
 }): Promise<VoiceAgent> {
   const { calledNumber, providerAgentId } = opts;
 
+  log.debug({ calledNumber, providerAgentId }, 'resolving tenant from call');
+
   // Step 1: Resolve via called number
   let agentByNumber: VoiceAgent | undefined;
   if (calledNumber) {
@@ -29,7 +34,14 @@ export async function resolveTenantFromCall(opts: {
     const voiceNumber = await findNumberByPhoneNumber(normalized);
     if (voiceNumber?.voice_agent_id) {
       const agent = await findAgentById(voiceNumber.voice_agent_id);
-      if (agent?.status === 'active') agentByNumber = agent;
+      if (agent?.status === 'active') {
+        agentByNumber = agent;
+        log.debug({ calledNumber: normalized, agentId: agent.id, tenantId: agent.tenant_id }, 'resolved via called number');
+      } else {
+        log.debug({ calledNumber: normalized, voiceAgentId: voiceNumber.voice_agent_id, agentStatus: agent?.status }, 'called number found but agent inactive or missing');
+      }
+    } else {
+      log.debug({ calledNumber: normalized }, 'no voice number or agent found for called number');
     }
   }
 
@@ -37,12 +49,21 @@ export async function resolveTenantFromCall(opts: {
   let agentByProviderId: VoiceAgent | undefined;
   if (providerAgentId) {
     const agent = await findAgentByProviderAgentId(providerAgentId);
-    if (agent?.status === 'active') agentByProviderId = agent;
+    if (agent?.status === 'active') {
+      agentByProviderId = agent;
+      log.debug({ providerAgentId, agentId: agent.id, tenantId: agent.tenant_id }, 'resolved via provider agent id');
+    } else {
+      log.debug({ providerAgentId, agentStatus: agent?.status }, 'provider agent id found but agent inactive or missing');
+    }
   }
 
   // Step 3: Conflict check — both resolved but point to different tenants
   if (agentByNumber && agentByProviderId) {
     if (agentByNumber.tenant_id !== agentByProviderId.tenant_id) {
+      log.warn(
+        { calledNumber, providerAgentId, tenantByNumber: agentByNumber.tenant_id, tenantByProviderId: agentByProviderId.tenant_id },
+        'tenant conflict: called number and provider agent id point to different tenants',
+      );
       throw new VoiceTenantNotResolvedError(
         'Cannot resolve tenant: called number and provider agent id point to different tenants',
       );
@@ -54,6 +75,10 @@ export async function resolveTenantFromCall(opts: {
   if (agentByNumber) return agentByNumber;
   if (agentByProviderId) return agentByProviderId;
 
+  log.warn(
+    { calledNumber, providerAgentId },
+    'tenant resolution failed: no active agent matched called number or provider agent id',
+  );
   throw new VoiceTenantNotResolvedError(
     'Cannot resolve tenant: no active agent matched the called number or provider agent id',
   );
