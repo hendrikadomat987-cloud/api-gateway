@@ -3,16 +3,15 @@
 /**
  * Voice — Restaurant Order DB Regression
  *
- * Validates the order happy-path using explicit Vapi-style args (item_id, quantity).
- * Real Vapi tool calls always send args as a JSON object or JSON string.
- * This test ensures the tool handler accepts explicit args without crashing
- * and returns data consistent with the requested item.
+ * Validates the order happy-path using real DB-backed tools (Phase 2).
+ * Fetches the real Margherita UUID via search, then runs the full order flow.
  *
  * Flow:
- *   1. create_order                      → order_id returned
- *   2. add_order_item(pizza_margherita)  → item added with correct data
- *   3. confirm_order                     → order confirmed
- *   4. persistence                       → call, session, events consistent
+ *   1. search_menu_item('margherita')  → resolve real item UUID + price
+ *   2. create_order                    → real UUID order_id returned
+ *   3. add_order_item(real UUID)       → order_item_id is UUID, name/price from DB
+ *   4. confirm_order                   → order confirmed
+ *   5. persistence                     → call, session, events consistent
  */
 
 const config = require('../../config/config');
@@ -50,6 +49,7 @@ const CALL_ID = uniqueVoiceCallId('test-call-restaurant-order-db');
 describe('voice / restaurant / order-db', () => {
   let internalCallId;
   let orderId;
+  let margheritaItemId; // real UUID from DB
 
   beforeAll(async () => {
     const res = await sendVoiceWebhook(buildVapiStatusUpdate(CALL_ID, {}, VAPI_RESTAURANT_ASSISTANT_ID));
@@ -75,67 +75,82 @@ describe('voice / restaurant / order-db', () => {
     internalCallId = call.id;
   });
 
-  // ── Step 1: create_order ───────────────────────────────────────────────────
+  // ── Step 0: resolve real Margherita UUID from DB ───────────────────────────
 
-  it('step 1 — create_order returns a valid order_id', async () => {
+  it('step 0 — search_menu_item resolves real Margherita UUID and price', async () => {
+    const res = await sendVoiceWebhook(
+      buildVapiToolCall(CALL_ID, 'search_menu_item', { query: 'margherita' }, VAPI_RESTAURANT_ASSISTANT_ID),
+    );
+
+    expect(res.status).toBe(200);
+    const toolResult = res.data?.results[0].result;
+    if (toolResult.success !== true) {
+      throw new Error(`search_menu_item failed:\n${JSON.stringify(toolResult, null, 2)}`);
+    }
+
+    const item = toolResult.items.find((i) => i.name?.toLowerCase().includes('margherita'));
+    expect(item).toBeDefined();
+    expect(item.price).toBe(8.5);
+    expectUuid(item.id);
+
+    margheritaItemId = item.id;
+  });
+
+  // ── Step 1: create_order — returns real UUID ───────────────────────────────
+
+  it('step 1 — create_order returns a real UUID order_id', async () => {
     const res = await sendVoiceWebhook(
       buildVapiToolCall(CALL_ID, 'create_order', {}, VAPI_RESTAURANT_ASSISTANT_ID),
     );
 
     expect(res.status).toBe(200);
 
-    const results = res.data?.results;
-    expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBeGreaterThan(0);
-
-    const toolResult = results[0].result;
+    const toolResult = res.data?.results[0].result;
     if (toolResult.success !== true) {
       throw new Error(`create_order failed:\n${JSON.stringify(toolResult, null, 2)}`);
     }
     expect(toolResult.success).toBe(true);
-    expect(typeof toolResult.order_id).toBe('string');
-    expect(toolResult.order_id.length).toBeGreaterThan(0);
+    expectUuid(toolResult.order_id);
     expect(toolResult.status).toBe('created');
 
     orderId = toolResult.order_id;
   });
 
-  // ── Step 2: add_order_item with explicit args ──────────────────────────────
-  // Real Vapi sends item_id and quantity as structured args.
-  // This validates that the tool handler accepts args without crashing
-  // and returns the correct item data for Margherita pizza.
+  // ── Step 2: add_order_item with real UUID ─────────────────────────────────
 
-  it('step 2 — add_order_item with explicit item_id arg returns Margherita', async () => {
+  it('step 2 — add_order_item with real UUID returns DB-backed item data', async () => {
+    if (!margheritaItemId) throw new Error('step 0 must run first');
+
     const res = await sendVoiceWebhook(
       buildVapiToolCall(
         CALL_ID,
         'add_order_item',
-        { item_id: 'pizza_margherita', quantity: 1 },
+        { item_id: margheritaItemId, quantity: 1 },
         VAPI_RESTAURANT_ASSISTANT_ID,
       ),
     );
 
     expect(res.status).toBe(200);
 
-    const results = res.data?.results;
-    expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBeGreaterThan(0);
-
-    const toolResult = results[0].result;
+    const toolResult = res.data?.results[0].result;
     if (toolResult.success !== true) {
       throw new Error(`add_order_item failed:\n${JSON.stringify(toolResult, null, 2)}`);
     }
     expect(toolResult.success).toBe(true);
-    expect(typeof toolResult.order_id).toBe('string');
+    expect(toolResult.order_id).toBe(orderId);
     expect(toolResult.status).toBe('item_added');
 
-    // Item data must match the requested Margherita pizza
-    expect(toolResult.item).toBeDefined();
-    expect(toolResult.item.id).toBe('pizza_margherita');
-    expect(toolResult.item.name).toBe('Margherita');
-    expect(toolResult.item.price).toBe(8.5);
-    expect(typeof toolResult.item.quantity).toBe('number');
-    expect(toolResult.item.quantity).toBeGreaterThan(0);
+    // Item data must come from real DB row
+    const item = toolResult.item;
+    expect(item).toBeDefined();
+    // order_item_id is the UUID of the restaurant_order_items row
+    expectUuid(item.id);
+    expect(item.name.toLowerCase()).toContain('margherita');
+    expect(item.price).toBe(8.5);
+    expect(item.quantity).toBe(1);
+    expect(Array.isArray(item.modifiers)).toBe(true);
+    expect(item.modifiers.length).toBe(0);
+    expect(item.line_total).toBe(8.5);
   });
 
   // ── Step 3: confirm_order ──────────────────────────────────────────────────
@@ -147,16 +162,12 @@ describe('voice / restaurant / order-db', () => {
 
     expect(res.status).toBe(200);
 
-    const results = res.data?.results;
-    expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBeGreaterThan(0);
-
-    const toolResult = results[0].result;
+    const toolResult = res.data?.results[0].result;
     if (toolResult.success !== true) {
       throw new Error(`confirm_order failed:\n${JSON.stringify(toolResult, null, 2)}`);
     }
     expect(toolResult.success).toBe(true);
-    expect(typeof toolResult.order_id).toBe('string');
+    expect(toolResult.order_id).toBe(orderId);
     expect(toolResult.status).toBe('confirmed');
   });
 
@@ -175,14 +186,14 @@ describe('voice / restaurant / order-db', () => {
     expect(session.status).toBe('active');
   });
 
-  it('step 5 — events exist for status-update and all three tool invocations', async () => {
+  it('step 5 — events exist for status-update and all tool invocations', async () => {
     const res    = await getVoiceCallEvents(TOKEN, internalCallId);
     const events = expectSuccess(res);
 
     expect(Array.isArray(events)).toBe(true);
     assertEventExists(events, 'call.status_update');
     assertEventExists(events, 'tool.invoked');
-    // 1 status-update + 3 tool calls = at least 4 persisted events
-    expect(events.length).toBeGreaterThanOrEqual(4);
+    // 1 status-update + 4 tool calls (search + create + add + confirm) = at least 5 events
+    expect(events.length).toBeGreaterThanOrEqual(5);
   });
 });

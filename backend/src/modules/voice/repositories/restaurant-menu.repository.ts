@@ -40,6 +40,14 @@ export interface MenuSearchResult {
   category: string;
 }
 
+/** Minimal menu item shape for order-item insertion (price + prep time). */
+export interface MenuItemForOrder {
+  id: string;
+  name: string;
+  price_cents: number;
+  prep_time_seconds: number;
+}
+
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 /**
@@ -92,6 +100,39 @@ export async function getMenuByTenant(
     }
 
     return [...categoryMap.values()];
+  });
+}
+
+/**
+ * Fetches a single active menu item by UUID for order processing.
+ * Returns null when the item does not exist or is inactive.
+ */
+export async function findMenuItemById(
+  tenantId: string,
+  id: string,
+): Promise<MenuItemForOrder | null> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query<{
+      id: string;
+      name: string;
+      price_cents: string;
+      prep_time_seconds: string;
+    }>(
+      `SELECT id, name, price_cents, prep_time_seconds
+       FROM restaurant_menu_items
+       WHERE tenant_id = $1 AND id = $2 AND is_active = true
+       LIMIT 1`,
+      [tenantId, id],
+    );
+
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id:                row.id,
+      name:              row.name,
+      price_cents:       parseInt(row.price_cents, 10),
+      prep_time_seconds: parseInt(row.prep_time_seconds, 10),
+    };
   });
 }
 

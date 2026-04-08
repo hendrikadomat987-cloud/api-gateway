@@ -46,6 +46,7 @@ const CALL_ID = uniqueVoiceCallId('test-call-restaurant-happy-path');
 
 describe('voice / restaurant / happy-path', () => {
   let internalCallId;
+  let firstMenuItemId; // real UUID captured from get_menu
 
   beforeAll(async () => {
     const res = await sendVoiceWebhook(buildVapiStatusUpdate(CALL_ID, {}, VAPI_RESTAURANT_ASSISTANT_ID));
@@ -101,6 +102,8 @@ describe('voice / restaurant / happy-path', () => {
     expect(typeof firstItem.id).toBe('string');
     expect(typeof firstItem.name).toBe('string');
     expect(typeof firstItem.price).toBe('number');
+
+    firstMenuItemId = firstItem.id;
   });
 
   // ── Step 2: create_order ───────────────────────────────────────────────────
@@ -129,8 +132,15 @@ describe('voice / restaurant / happy-path', () => {
   // ── Step 3: add_order_item ─────────────────────────────────────────────────
 
   it('step 3 — add_order_item returns added item', async () => {
+    if (!firstMenuItemId) throw new Error('step 1 must run first');
+
     const res = await sendVoiceWebhook(
-      buildVapiToolCall(CALL_ID, 'add_order_item', {}, VAPI_RESTAURANT_ASSISTANT_ID),
+      buildVapiToolCall(
+        CALL_ID,
+        'add_order_item',
+        { item_id: firstMenuItemId, quantity: 1 },
+        VAPI_RESTAURANT_ASSISTANT_ID,
+      ),
     );
 
     expect(res.status).toBe(200);
@@ -148,17 +158,26 @@ describe('voice / restaurant / happy-path', () => {
     expect(toolResult.order_id.length).toBeGreaterThan(0);
     expect(toolResult.status).toBe('item_added');
     expect(toolResult.item).toBeDefined();
-    expect(toolResult.item.id).toBe('pizza_margherita');
-    expect(toolResult.item.name).toBe('Margherita');
+    expect(typeof toolResult.item.id).toBe('string');
+    expect(toolResult.item.id.length).toBeGreaterThan(0);
+    expect(typeof toolResult.item.name).toBe('string');
     expect(toolResult.item.quantity).toBe(1);
-    expect(toolResult.item.price).toBe(8.5);
+    expect(typeof toolResult.item.price).toBe('number');
+    expect(toolResult.item.price).toBeGreaterThan(0);
   });
 
   // ── Step 4: update_order_item ─────────────────────────────────────────────
 
   it('step 4 — update_order_item returns updated item', async () => {
+    if (!firstMenuItemId) throw new Error('step 1 must run first');
+
     const res = await sendVoiceWebhook(
-      buildVapiToolCall(CALL_ID, 'update_order_item', {}, VAPI_RESTAURANT_ASSISTANT_ID),
+      buildVapiToolCall(
+        CALL_ID,
+        'update_order_item',
+        { item_id: firstMenuItemId, quantity: 2 },
+        VAPI_RESTAURANT_ASSISTANT_ID,
+      ),
     );
 
     expect(res.status).toBe(200);
@@ -176,10 +195,12 @@ describe('voice / restaurant / happy-path', () => {
     expect(toolResult.order_id.length).toBeGreaterThan(0);
     expect(toolResult.status).toBe('item_updated');
     expect(toolResult.item).toBeDefined();
-    expect(toolResult.item.id).toBe('pizza_margherita');
-    expect(toolResult.item.name).toBe('Margherita');
+    expect(typeof toolResult.item.id).toBe('string');
+    expect(toolResult.item.id.length).toBeGreaterThan(0);
+    expect(typeof toolResult.item.name).toBe('string');
     expect(toolResult.item.quantity).toBe(2);
-    expect(toolResult.item.price).toBe(8.5);
+    expect(typeof toolResult.item.price).toBe('number');
+    expect(toolResult.item.price).toBeGreaterThan(0);
   });
 
   // ── Step 5: confirm_order ──────────────────────────────────────────────────
