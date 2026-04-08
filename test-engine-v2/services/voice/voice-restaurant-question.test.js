@@ -4,7 +4,7 @@
  * Voice — Restaurant Question Flow
  *
  * Validates the menu question/FAQ flow in a single session:
- *   1. answer_menu_question → returns a stub answer for a caller's question
+ *   1. answer_menu_question → returns a knowledge or fallback answer
  *   2. persistence          → call, session, events exist and are consistent
  */
 
@@ -93,7 +93,7 @@ describe('voice / restaurant / question', () => {
     expect(toolResult.question).toBe('Welche Pizza habt ihr?');
     expect(typeof toolResult.answer).toBe('string');
     expect(toolResult.answer.length).toBeGreaterThan(0);
-    expect(toolResult.source).toBe('stub');
+    expect(['knowledge', 'fallback']).toContain(toolResult.source);
 
     // Stub answer must mention both pizza options
     expect(toolResult.answer).toContain('Margherita');
