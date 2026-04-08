@@ -35,7 +35,7 @@ const { expectSuccess, assertEventExists, expectUuid } = require('../../core/ass
 
 jest.setTimeout(120000);
 
-const TOKEN   = config.tokens.tenantA;
+const TOKEN   = config.tokens.tenantSalon;
 const CALL_ID = uniqueVoiceCallId('test-call-salon-happy-path');
 
 // ─────────────────────────────────────────────────────────────────────────────

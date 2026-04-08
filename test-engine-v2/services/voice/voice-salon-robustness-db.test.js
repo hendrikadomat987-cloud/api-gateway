@@ -29,7 +29,7 @@ const {
 
 jest.setTimeout(120000);
 
-const TOKEN = config.tokens.tenantA;
+const TOKEN = config.tokens.tenantSalon;
 
 async function setupCall(callId) {
   const res = await sendVoiceWebhook(buildVapiStatusUpdate(callId, {}, VAPI_SALON_ASSISTANT_ID));

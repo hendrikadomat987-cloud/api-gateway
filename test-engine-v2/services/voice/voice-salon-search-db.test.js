@@ -22,7 +22,7 @@ const {
 
 jest.setTimeout(60000);
 
-const TOKEN   = config.tokens.tenantA;
+const TOKEN   = config.tokens.tenantSalon;
 const CALL_ID = uniqueVoiceCallId('test-salon-search');
 
 async function setupCall() {

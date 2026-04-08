@@ -8,8 +8,9 @@ require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 // ── Token resolution ──────────────────────────────────────────────────────────
 
 // Support legacy TOKEN env var as fallback for TOKEN_TENANT_A
-const tenantA = process.env.TOKEN_TENANT_A || process.env.TOKEN || '';
-const tenantB = process.env.TOKEN_TENANT_B || '';
+const tenantA    = process.env.TOKEN_TENANT_A    || process.env.TOKEN || '';
+const tenantB    = process.env.TOKEN_TENANT_B    || '';
+const tenantSalon = process.env.TOKEN_TENANT_SALON || '';
 
 // ── Hard validation for required vars ─────────────────────────────────────────
 
@@ -39,6 +40,8 @@ const config = {
     tenantA,
     /** Valid token for Tenant B — used in RLS / cross-tenant tests. */
     tenantB,
+    /** Valid token for Salon Tenant (00000000-…-0002) — used in salon track tests. */
+    tenantSalon,
     /** An expired JWT — used to verify 401 TOKEN_EXPIRED responses. */
     expired: process.env.TOKEN_EXPIRED || 'expired-token',
     /** A syntactically invalid string — used to verify 401 INVALID_TOKEN. */
