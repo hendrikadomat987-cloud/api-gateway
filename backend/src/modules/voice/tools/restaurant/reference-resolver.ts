@@ -29,11 +29,18 @@ export type ReferenceResolveType =
   | 'name'         // "margherita"
   | 'exact_id';    // UUID / order_item_id — caller handles directly
 
+export interface ReferenceCandidate {
+  position: number;  // 1-based
+  name:     string;
+  id:       string;  // order_item_id ?? item_id
+}
+
 export interface ReferenceResult {
-  type:    ReferenceResolveType;
-  index:   number;           // 0-based index into items; -1 = unresolved
-  item:    ContextItem | null;
-  error?:  'item_not_found' | 'ambiguous_reference' | 'empty_order' | 'out_of_bounds';
+  type:        ReferenceResolveType;
+  index:       number;           // 0-based index into items; -1 = unresolved
+  item:        ContextItem | null;
+  error?:      'item_not_found' | 'ambiguous_reference' | 'empty_order' | 'out_of_bounds';
+  candidates?: ReferenceCandidate[];  // populated when error = 'ambiguous_reference'
 }
 
 // ── UUID detection ────────────────────────────────────────────────────────────
@@ -150,7 +157,12 @@ export function resolveItemReference(
   // Check if all matches share the same name (→ not ambiguous, return last)
   const distinctNames = new Set(matches.map((m) => m.name.toLowerCase()));
   if (distinctNames.size > 1) {
-    return { type: 'name', index: -1, item: null, error: 'ambiguous_reference' };
+    const candidates: ReferenceCandidate[] = matches.map((m, i) => ({
+      position: items.indexOf(m) + 1,
+      name:     m.name,
+      id:       m.order_item_id ?? m.item_id,
+    }));
+    return { type: 'name', index: -1, item: null, error: 'ambiguous_reference', candidates };
   }
 
   // All matches are the same item → return the last occurrence

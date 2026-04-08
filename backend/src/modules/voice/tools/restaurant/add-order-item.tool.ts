@@ -18,6 +18,7 @@ import {
   isNochmalRef,
   type ContextItem,
 } from './reference-resolver.js';
+import { guardDraftState, validateQuantity } from './order-guards.js';
 
 // ── Tool entry point ──────────────────────────────────────────────────────────
 
@@ -40,8 +41,15 @@ export async function runAddOrderItem(
   context: VoiceContext,
   args: Record<string, unknown>,
 ): Promise<unknown> {
-  const itemId   = typeof args.item_id  === 'string' ? args.item_id.trim() : '';
-  const quantity = typeof args.quantity === 'number'  ? args.quantity : 1;
+  const itemId = typeof args.item_id === 'string' ? args.item_id.trim() : '';
+
+  // Quantity: default 1 when not provided; validate when explicitly provided
+  const rawQty   = args.quantity;
+  const quantity = rawQty === undefined ? 1 : (typeof rawQty === 'number' ? rawQty : NaN);
+  if (rawQty !== undefined) {
+    const qErr = validateQuantity(rawQty);
+    if (qErr) return qErr;
+  }
 
   // Validate modifiers first — fail early before any DB writes
   const modifierInputs = parseModifierInputs(args.modifiers);
@@ -66,6 +74,12 @@ async function _doAddItem(
 ): Promise<unknown> {
   // 1. Get or auto-create order context
   let ctx = await findOrderContextBySessionId(context.tenantId, context.session.id);
+
+  // Guard: block mutations on confirmed/terminal orders
+  if (ctx) {
+    const stateErr = guardDraftState(ctx);
+    if (stateErr) return stateErr;
+  }
 
   let orderId: string;
   let items: ContextItem[];

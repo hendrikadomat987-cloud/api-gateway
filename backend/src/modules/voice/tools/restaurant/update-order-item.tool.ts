@@ -14,6 +14,7 @@ import {
   isUuid,
   type ContextItem,
 } from './reference-resolver.js';
+import { guardDraftState, validateQuantity } from './order-guards.js';
 
 /**
  * update_order_item
@@ -30,8 +31,14 @@ export async function runUpdateOrderItem(
   context: VoiceContext,
   args: Record<string, unknown>,
 ): Promise<unknown> {
-  const itemId   = typeof args.item_id  === 'string' ? args.item_id.trim() : '';
-  const quantity = typeof args.quantity === 'number'  ? args.quantity : undefined;
+  const itemId = typeof args.item_id === 'string' ? args.item_id.trim() : '';
+
+  // Validate quantity if explicitly provided
+  if (args.quantity !== undefined) {
+    const qErr = validateQuantity(args.quantity);
+    if (qErr) return qErr;
+  }
+  const quantity = typeof args.quantity === 'number' ? args.quantity : undefined;
 
   // Validate modifiers
   const modifierInputs = parseModifierInputs(args.modifiers);
@@ -55,8 +62,12 @@ async function _doUpdateItem(
   const ctx = await findOrderContextBySessionId(context.tenantId, context.session.id);
 
   if (!ctx) {
-    return { success: false, error: 'no_active_order' };
+    return { success: false, error: 'no_active_order', message: 'No active order found for this session.' };
   }
+
+  // Guard: block mutations on confirmed/terminal orders
+  const stateErr = guardDraftState(ctx);
+  if (stateErr) return stateErr;
 
   const json    = ctx.order_context_json as Record<string, unknown>;
   const orderId = json.restaurant_order_id as string;
@@ -75,7 +86,15 @@ async function _doUpdateItem(
   } else {
     const resolved = resolveItemReference(items, itemId);
     if (resolved.error) {
-      return { success: false, error: resolved.error, item_id: itemId };
+      return {
+        success:    false,
+        error:      resolved.error,
+        item_id:    itemId,
+        message:    resolved.error === 'ambiguous_reference'
+          ? 'Multiple items match this reference. Please be more specific.'
+          : `No item found matching "${itemId}".`,
+        candidates: resolved.candidates,
+      };
     }
     idx = resolved.index;
     if (idx === -1) {

@@ -11,6 +11,7 @@ import {
 } from '../../repositories/restaurant-order.repository.js';
 import { calculateTotals } from './order-rules.js';
 import { resolveItemReference, isUuid, type ContextItem } from './reference-resolver.js';
+import { guardDraftState, validateItemRef } from './order-guards.js';
 
 /**
  * remove_order_item
@@ -27,12 +28,20 @@ export async function runRemoveOrderItem(
   context: VoiceContext,
   args: Record<string, unknown>,
 ): Promise<unknown> {
-  const ref = typeof args.item_id === 'string' ? args.item_id.trim() : '';
+  // Validate item reference
+  const refErr = validateItemRef(args.item_id);
+  if (refErr) return refErr;
+
+  const ref = (args.item_id as string).trim();
 
   const ctx = await findOrderContextBySessionId(context.tenantId, context.session.id);
   if (!ctx) {
-    return { success: false, error: 'no_active_order' };
+    return { success: false, error: 'no_active_order', message: 'No active order found for this session.' };
   }
+
+  // Guard: block mutations on confirmed/terminal orders
+  const stateErr = guardDraftState(ctx);
+  if (stateErr) return stateErr;
 
   const json    = ctx.order_context_json as Record<string, unknown>;
   const orderId = json.restaurant_order_id as string;
@@ -55,7 +64,15 @@ export async function runRemoveOrderItem(
   } else {
     const resolved = resolveItemReference(items, ref);
     if (resolved.error) {
-      return { success: false, error: resolved.error, item_id: ref };
+      return {
+        success:    false,
+        error:      resolved.error,
+        item_id:    ref,
+        message:    resolved.error === 'ambiguous_reference'
+          ? 'Multiple items match this reference. Please be more specific.'
+          : `No item found matching "${ref}".`,
+        candidates: resolved.candidates,
+      };
     }
     idx = resolved.index;
   }

@@ -31,11 +31,32 @@ export async function runConfirmOrder(
     return { success: false, error: 'no_active_order' };
   }
 
+  // Guard: already confirmed — idempotent success to avoid voice-retry confusion
+  if (ctx.status === 'confirmed') {
+    const json    = ctx.order_context_json as Record<string, unknown>;
+    const orderId = json.restaurant_order_id as string | undefined;
+    return {
+      success:  false,
+      error:    'already_confirmed',
+      order_id: orderId ?? 'unknown',
+      message:  'This order has already been confirmed.',
+    };
+  }
+
   const json        = ctx.order_context_json as Record<string, unknown>;
   const orderId     = json.restaurant_order_id as string | undefined;
   const items       = (json.items as ContextItem[] | undefined) ?? [];
   const deliveryType = (json.delivery_type as string | undefined) ?? 'pickup';
   const postalCode  = json.customer_postal_code as string | undefined;
+
+  // Guard: no items in order
+  if (items.length === 0) {
+    return {
+      success: false,
+      error:   'empty_order',
+      message: 'Cannot confirm an order with no items. Please add at least one item first.',
+    };
+  }
 
   // 1. Calculate subtotal
   const subtotalOnly = calculateTotals(items, 0);
