@@ -234,6 +234,31 @@ export interface VoiceCallbackRequest {
   updated_at: string;
 }
 
+// ── Restaurant modifiers ──────────────────────────────────────────────────────
+
+export type OrderModifierType = 'add' | 'remove' | 'free_text';
+
+/**
+ * A modifier applied to a single order item.
+ * modifier_id is present for 'add' and 'remove' types (resolved from catalog).
+ * price_delta is in euros (price_cents / 100 from catalog; always 0 for remove/free_text).
+ */
+export interface OrderItemModifier {
+  modifier_id?: string;
+  type: OrderModifierType;
+  name: string;
+  price_delta: number;
+}
+
+/**
+ * Input shape for a modifier when passed by the voice tool caller.
+ * Only name and type are required — price is resolved from the catalog.
+ */
+export interface OrderModifierInput {
+  type: OrderModifierType;
+  name: string;
+}
+
 // ── Restaurant menu ───────────────────────────────────────────────────────────
 
 export interface RestaurantMenuCategory {
