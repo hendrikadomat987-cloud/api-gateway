@@ -6,7 +6,7 @@ import type { VoiceContext } from '../../../../types/voice.js';
  * check_availability
  *
  * Checks whether a specific slot is bookable for a customer.
- * Forwards to the availability engine via n8n.
+ * Forwards to the availability engine via n8n (/webhook/availability-engine/check).
  */
 export async function runCheckAvailability(
   context: VoiceContext,
@@ -34,10 +34,13 @@ export async function runCheckAvailability(
 
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/webhook/check-availability`, {
+    response = await fetch(`${baseUrl}/webhook/availability-engine/check`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start, customer_id, duration_minutes }),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-tenant-id': context.tenantId,
+      },
+      body: JSON.stringify({ start, customer_id, duration_minutes, timezone }),
       signal: controller.signal,
     });
   } catch (err) {
@@ -53,14 +56,13 @@ export async function runCheckAvailability(
     throw new Error(`check_availability: n8n webhook returned HTTP ${response.status}`);
   }
 
-  const body = await response.json() as { success: boolean; slots: string[] };
+  const body = await response.json() as { success: boolean; data: { bookable: boolean; reason: string | null } };
 
   if (!body.success) {
     throw new Error('check_availability: n8n webhook returned unsuccessful response');
   }
 
-  const slots = Array.isArray(body.slots) ? body.slots : [];
-  return { success: true, bookable: slots.length > 0, slots };
+  return { success: true, bookable: body.data.bookable, reason: body.data.reason };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */
