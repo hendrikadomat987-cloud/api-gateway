@@ -7,7 +7,7 @@ const schema = z.object({
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'])
     .default('info'),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   JWT_ISSUER: z.string().optional(),
   JWT_AUDIENCE: z.string().optional(),
   VAPI_WEBHOOK_SECRET: z.string().min(1, 'VAPI_WEBHOOK_SECRET is required'),
