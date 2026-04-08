@@ -6,22 +6,18 @@ import {
   findOrderContextBySessionId,
   upsertOrderContext,
 } from '../../repositories/voice-order-contexts.repository.js';
-import { createRestaurantOrder, addRestaurantOrderItem, updateOrderTotals } from '../../repositories/restaurant-order.repository.js';
+import {
+  createRestaurantOrder,
+  addRestaurantOrderItem,
+  updateOrderTotals,
+} from '../../repositories/restaurant-order.repository.js';
 import { findMenuItemById } from '../../repositories/restaurant-menu.repository.js';
 import { calculateTotals } from './order-rules.js';
-
-// ── Local type for items stored in order_context_json ─────────────────────────
-
-interface ContextItem {
-  order_item_id: string | null;
-  item_id:       string;
-  menu_item_id:  string | null;
-  name:          string;
-  quantity:      number;
-  unit_price:    number;
-  modifiers:     OrderItemModifier[];
-  line_total:    number;
-}
+import {
+  isUuid,
+  isNochmalRef,
+  type ContextItem,
+} from './reference-resolver.js';
 
 // ── Tool entry point ──────────────────────────────────────────────────────────
 
@@ -32,19 +28,19 @@ interface ContextItem {
  * Auto-creates an order context if none exists yet.
  *
  * Args:
- *   item_id   {string}  — menu item UUID (or legacy stub ID)
+ *   item_id   {string}  — menu item UUID, "nochmal" (repeat last), or ignored
  *   quantity  {number}  — defaults to 1
  *   modifiers {Array}   — optional: [{ type, name }]
  *
- * When item_id is a real UUID present in restaurant_menu_items, a real
- * restaurant_order_items row is created and order_item_id is returned.
- * Otherwise (legacy stub IDs) the item is stored in context_json only.
+ * Special values for item_id:
+ *   "nochmal" / "noch eins" / "das gleiche" — clones the last context item
+ *     as a new line (same menu_item_id + modifiers, ignores quantity arg).
  */
 export async function runAddOrderItem(
   context: VoiceContext,
   args: Record<string, unknown>,
 ): Promise<unknown> {
-  const itemId   = typeof args.item_id  === 'string' ? args.item_id  : '';
+  const itemId   = typeof args.item_id  === 'string' ? args.item_id.trim() : '';
   const quantity = typeof args.quantity === 'number'  ? args.quantity : 1;
 
   // Validate modifiers first — fail early before any DB writes
@@ -89,18 +85,32 @@ async function _doAddItem(
     items   = (json.items as ContextItem[] | undefined) ?? [];
   }
 
-  // 2. Try to resolve real menu item (only when item_id looks like a UUID)
-  const menuItem = _isUuid(itemId)
+  // 2. Handle "nochmal" — clone last context item as a new line
+  if (isNochmalRef(itemId)) {
+    if (items.length === 0) {
+      return { success: false, error: 'empty_order', reason: 'no item to repeat' };
+    }
+    const last = items[items.length - 1];
+    return _doAddItem(
+      context,
+      last.menu_item_id ?? last.item_id,
+      1,                // always quantity 1 per repeat
+      last.modifiers,   // copy modifiers from original
+    );
+  }
+
+  // 3. Try to resolve real menu item (only when item_id is a UUID)
+  const menuItem = isUuid(itemId)
     ? await findMenuItemById(context.tenantId, itemId)
     : null;
 
-  // 3. Calculate per-unit price
+  // 4. Calculate per-unit price
   const basePriceCents     = menuItem?.price_cents ?? 0;
   const modifierExtraCents = modifiers.reduce((sum, m) => sum + Math.round(m.price_delta * 100), 0);
   const unitPriceCents     = basePriceCents + modifierExtraCents;
   const lineTotalCents     = unitPriceCents * quantity;
 
-  // 4. Persist to restaurant_order_items if menu item resolved
+  // 5. Persist to restaurant_order_items if menu item resolved
   let orderItemId: string | null = null;
   if (menuItem) {
     orderItemId = await addRestaurantOrderItem(context.tenantId, orderId, {
@@ -113,7 +123,7 @@ async function _doAddItem(
     });
   }
 
-  // 5. Update context_json (truth for UI / voice agent)
+  // 6. Build new context item
   const newItem: ContextItem = {
     order_item_id: orderItemId,
     item_id:       itemId,
@@ -127,10 +137,9 @@ async function _doAddItem(
 
   const updatedItems = [...items, newItem];
 
-  // 6. Recalculate order totals and persist to restaurant_orders
+  // 7. Recalculate order totals
   const totals = calculateTotals(updatedItems, 0); // delivery fee applied at confirm
   if (menuItem) {
-    // Only update DB totals when we have a real order with DB items
     await updateOrderTotals(context.tenantId, orderId, {
       subtotalCents:    totals.subtotal_cents,
       deliveryFeeCents: 0,
@@ -138,19 +147,20 @@ async function _doAddItem(
     });
   }
 
+  // 8. Persist updated context with enrichment fields
   await upsertOrderContext(
     context.tenantId, context.call.id, context.session.id,
     {
       ...(ctx.order_context_json as Record<string, unknown>),
-      items: updatedItems,
+      items:               updatedItems,
+      last_added_item_id:  orderItemId ?? itemId,
     },
   );
 
-  // 7. Return
   return {
-    success:       true,
-    order_id:      orderId,
-    status:        'item_added',
+    success:        true,
+    order_id:       orderId,
+    status:         'item_added',
     subtotal_cents: totals.subtotal_cents,
     total_cents:    totals.subtotal_cents,
     item: {
@@ -163,10 +173,6 @@ async function _doAddItem(
       line_total:  lineTotalCents / 100,
     },
   };
-}
-
-function _isUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
 /** Route handler for direct HTTP invocation (testing only). */

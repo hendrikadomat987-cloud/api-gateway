@@ -21,6 +21,8 @@ import { runAddOrderItem } from '../tools/restaurant/add-order-item.tool.js';
 import { runUpdateOrderItem } from '../tools/restaurant/update-order-item.tool.js';
 import { runConfirmOrder } from '../tools/restaurant/confirm-order.tool.js';
 import { runCreateRestaurantCallbackRequest } from '../tools/restaurant/create-restaurant-callback-request.tool.js';
+import { runRemoveOrderItem } from '../tools/restaurant/remove-order-item.tool.js';
+import { runGetOrderSummary } from '../tools/restaurant/get-order-summary.tool.js';
 
 // ── Dispatch maps ─────────────────────────────────────────────────────────────
 
@@ -42,6 +44,8 @@ const RESTAURANT_TOOLS: Record<string, ToolHandler> = {
   add_order_item: runAddOrderItem,
   update_order_item: runUpdateOrderItem,
   confirm_order: runConfirmOrder,
+  remove_order_item: runRemoveOrderItem,
+  get_order_summary: runGetOrderSummary,
   create_restaurant_callback_request: runCreateRestaurantCallbackRequest,
 };
 

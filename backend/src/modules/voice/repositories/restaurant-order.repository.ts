@@ -158,6 +158,20 @@ export async function finalizeRestaurantOrder(
 }
 
 /**
+ * Deletes a single restaurant_order_items row by its UUID.
+ * No-op when the row does not exist.
+ */
+export async function deleteRestaurantOrderItem(
+  tenantId: string,
+  orderItemId: string,
+): Promise<void> {
+  await pool.query(
+    `DELETE FROM restaurant_order_items WHERE tenant_id = $1 AND id = $2`,
+    [tenantId, orderItemId],
+  );
+}
+
+/**
  * Returns all order items for a given order, ordered by insertion time.
  */
 export async function getRestaurantOrderItems(
