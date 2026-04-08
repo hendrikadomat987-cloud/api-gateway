@@ -1,0 +1,13 @@
+{
+  "message": {
+    "type": "status-update",
+    "call": {
+      "id": "test-call-restaurant-happy-path-1775631025595-ajsq",
+      "createdAt": "2026-04-08T06:50:25.598Z",
+      "updatedAt": "2026-04-08T06:50:25.598Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "status": "in-progress",
+    "timestamp": "2026-04-08T06:50:25.600Z"
+  }
+}

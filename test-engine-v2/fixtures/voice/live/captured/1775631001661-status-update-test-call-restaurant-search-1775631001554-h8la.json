@@ -1,0 +1,13 @@
+{
+  "message": {
+    "type": "status-update",
+    "call": {
+      "id": "test-call-restaurant-search-1775631001554-h8la",
+      "createdAt": "2026-04-08T06:50:01.556Z",
+      "updatedAt": "2026-04-08T06:50:01.556Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "status": "in-progress",
+    "timestamp": "2026-04-08T06:50:01.558Z"
+  }
+}

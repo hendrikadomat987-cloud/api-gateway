@@ -1,0 +1,25 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-order-db-1775630416699-n63h",
+      "createdAt": "2026-04-08T06:40:20.375Z",
+      "updatedAt": "2026-04-08T06:40:20.375Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:40:20.376Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630420376-000002",
+        "type": "function",
+        "function": {
+          "name": "add_order_item",
+          "arguments": {
+            "item_id": "pizza_margherita",
+            "quantity": 1
+          }
+        }
+      }
+    ]
+  }
+}

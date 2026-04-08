@@ -1,0 +1,36 @@
+{
+  "message": {
+    "timestamp": 1775554300000,
+    "type": "tool-calls",
+    "call": {
+      "id": "call_test_tool_call_001",
+      "assistantId": "696456cd-bdd2-4957-8c29-b9133946b06a",
+      "orgId": "2e3874d1-0989-45dd-a3b5-45f1f3008091",
+      "phoneNumberId": "8df2bae4-afaf-405a-a7c6-3aa496bfe37b",
+      "type": "inboundPhoneCall",
+      "customer": {
+        "number": "+491604802262"
+      }
+    },
+    "toolCallList": [
+      {
+        "id": "call_abc123",
+        "type": "function",
+        "function": {
+          "name": "search_restaurant_items",
+          "arguments": {
+            "query": "Pizza Margherita",
+            "location": "Berlin",
+            "limit": 3
+          }
+        }
+      }
+    ],
+    "toolWithToolCallList": [
+      {
+        "toolCallId": "call_abc123",
+        "name": "search_restaurant_items"
+      }
+    ]
+  }
+}

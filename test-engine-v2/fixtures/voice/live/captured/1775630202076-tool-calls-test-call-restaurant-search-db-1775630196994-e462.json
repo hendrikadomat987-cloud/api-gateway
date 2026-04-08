@@ -1,0 +1,24 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-search-db-1775630196994-e462",
+      "createdAt": "2026-04-08T06:36:42.071Z",
+      "updatedAt": "2026-04-08T06:36:42.071Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:36:42.072Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630202072-000002",
+        "type": "function",
+        "function": {
+          "name": "search_menu_item",
+          "arguments": {
+            "query": "cola"
+          }
+        }
+      }
+    ]
+  }
+}

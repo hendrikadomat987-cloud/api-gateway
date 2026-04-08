@@ -1,0 +1,86 @@
+{
+  "_fixture_meta": {
+    "purpose": "Placeholder for a real Vapi end-of-call-report webhook payload.",
+    "replace": [
+      "message.call.id          → real provider_call_id (same as the preceding status-update)",
+      "message.call.assistantId → real VAPI assistantId",
+      "message.call.orgId       → real Vapi organisation ID",
+      "message.transcript       → real call transcript (can be empty string)",
+      "message.recordingUrl     → real recording URL or null",
+      "message.cost             → real call cost in USD"
+    ],
+    "factory_delta": [
+      "call.orgId          — NOT present in factory buildVapiEndOfCallReport",
+      "call.type           — NOT present in factory",
+      "call.phoneNumberId  — NOT present in factory",
+      "call.customer       — NOT present in factory",
+      "durationMinutes     — NOT present in factory (only durationSeconds is built by factory)",
+      "transcript          — NOT present in factory",
+      "recordingUrl        — NOT present in factory (factory has no recording fields)",
+      "stereoRecordingUrl  — NOT present in factory",
+      "cost / costBreakdown — NOT present in factory",
+      "analysis            — NOT present in factory (structured evaluation fields)",
+      "artifact            — NOT present in factory",
+      "messages            — NOT present in factory (per-turn transcript messages)"
+    ]
+  },
+  "message": {
+    "type": "end-of-call-report",
+    "endedReason": "customer-ended-call",
+    "summary": "The caller asked about opening hours. The agent provided the information.",
+    "transcript": "Agent: Hello, how can I help you today?\nCaller: What are your opening hours?\nAgent: We are open Monday to Friday from 9am to 6pm.",
+    "durationSeconds": 45,
+    "durationMinutes": 0.75,
+    "recordingUrl": null,
+    "stereoRecordingUrl": null,
+    "cost": 0.02,
+    "costBreakdown": {
+      "transport": 0.005,
+      "stt": 0.005,
+      "llm": 0.008,
+      "tts": 0.002,
+      "vapi": 0.0,
+      "total": 0.02
+    },
+    "analysis": {
+      "summary": "Customer inquiry about opening hours resolved successfully.",
+      "structuredData": {},
+      "successEvaluation": "true"
+    },
+    "artifact": {
+      "recordingUrl": null,
+      "stereoRecordingUrl": null,
+      "videoRecordingUrl": null
+    },
+    "messages": [
+      {
+        "role": "assistant",
+        "message": "Hello, how can I help you today?",
+        "time": 0.5,
+        "endTime": 2.1,
+        "secondsFromStart": 0.5
+      },
+      {
+        "role": "user",
+        "message": "What are your opening hours?",
+        "time": 3.0,
+        "endTime": 5.2,
+        "secondsFromStart": 3.0
+      }
+    ],
+    "call": {
+      "id": "REPLACE_WITH_REAL_CALL_ID",
+      "orgId": "REPLACE_WITH_REAL_ORG_ID",
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:45.000Z",
+      "type": "inboundPhoneCall",
+      "status": "ended",
+      "assistantId": "REPLACE_WITH_REAL_ASSISTANT_ID",
+      "phoneNumberId": "REPLACE_WITH_REAL_PHONE_NUMBER_ID",
+      "customer": {
+        "number": "+49123456789"
+      }
+    },
+    "timestamp": "2024-01-15T10:00:45.000Z"
+  }
+}

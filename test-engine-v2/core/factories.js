@@ -249,6 +249,7 @@ function uniqueVoiceCallId(prefix = 'test-call-voice') {
 // Set VAPI_RESTAURANT_ASSISTANT_ID for the restaurant-track agent.
 const VAPI_ASSISTANT_ID            = process.env.VAPI_ASSISTANT_ID            || '';
 const VAPI_RESTAURANT_ASSISTANT_ID = process.env.VAPI_RESTAURANT_ASSISTANT_ID || '';
+const VAPI_SALON_ASSISTANT_ID      = process.env.VAPI_SALON_ASSISTANT_ID      || '';
 
 /**
  * Build the VAPI call sub-object.
@@ -375,6 +376,7 @@ module.exports = {
   buildVoiceJwt,
   VAPI_ASSISTANT_ID,
   VAPI_RESTAURANT_ASSISTANT_ID,
+  VAPI_SALON_ASSISTANT_ID,
   REQUEST_TYPES,
   REQUEST_STATUSES,
   RESOURCE_TYPES,

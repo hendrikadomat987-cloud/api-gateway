@@ -1,0 +1,35 @@
+{
+  "_fixture_meta": {
+    "source": "placeholder",
+    "note": "Minimal placeholder — replace with real Vapi speech-update payload once captured. See fixtures/voice/live/real/vapi-speech-update.json for normalised reference."
+  },
+  "message": {
+    "timestamp": "2026-01-01T10:00:01.000Z",
+    "type": "speech-update",
+    "status": "started",
+    "role": "assistant",
+    "turn": 0,
+    "artifact": {
+      "messages": [
+        {
+          "role": "system",
+          "message": "You are a test assistant.",
+          "time": 1000000000000,
+          "secondsFromStart": 0
+        }
+      ],
+      "messagesOpenAIFormatted": [
+        {
+          "role": "system",
+          "content": "You are a test assistant."
+        }
+      ]
+    },
+    "call": {
+      "id": "test-call-live-001",
+      "assistantId": "test-assistant-001",
+      "type": "inboundPhoneCall",
+      "status": "in-progress"
+    }
+  }
+}

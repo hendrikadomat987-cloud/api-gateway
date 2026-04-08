@@ -1,0 +1,24 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-search-db-1775630196994-e462",
+      "createdAt": "2026-04-08T06:36:43.810Z",
+      "updatedAt": "2026-04-08T06:36:43.810Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:36:43.811Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630203811-000003",
+        "type": "function",
+        "function": {
+          "name": "search_menu_item",
+          "arguments": {
+            "query": "burger"
+          }
+        }
+      }
+    ]
+  }
+}

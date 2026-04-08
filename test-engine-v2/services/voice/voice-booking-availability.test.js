@@ -76,5 +76,6 @@ describe('voice / booking / check_availability', () => {
     }
     expect(toolResult.success).toBe(true);
     expect(typeof toolResult.bookable).toBe('boolean');
+    expect(toolResult.reason === null || typeof toolResult.reason === 'string').toBe(true);
   });
 });

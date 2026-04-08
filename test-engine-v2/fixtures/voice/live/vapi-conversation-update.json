@@ -1,0 +1,79 @@
+{
+  "_fixture_meta": {
+    "source": "placeholder",
+    "note": "Minimal placeholder — replace with real Vapi conversation-update payload once captured. See fixtures/voice/live/real/vapi-conversation-update.json for normalised reference."
+  },
+  "message": {
+    "timestamp": "2026-01-01T10:00:00.000Z",
+    "type": "conversation-update",
+    "conversation": [
+      {
+        "role": "system",
+        "content": "You are a test assistant."
+      },
+      {
+        "role": "assistant",
+        "content": "Hello, how can I help you?"
+      },
+      {
+        "role": "user",
+        "content": "I would like to place an order."
+      }
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "message": "You are a test assistant.",
+        "time": 1000000000000,
+        "secondsFromStart": 0
+      },
+      {
+        "role": "bot",
+        "message": "Hello, how can I help you?",
+        "time": 1000000001000,
+        "endTime": 1000000002000,
+        "secondsFromStart": 1.0,
+        "duration": 1000,
+        "source": ""
+      },
+      {
+        "role": "user",
+        "message": "I would like to place an order.",
+        "time": 1000000003000,
+        "endTime": 1000000004000,
+        "secondsFromStart": 3.0,
+        "duration": 1000
+      }
+    ],
+    "messagesOpenAIFormatted": [
+      {
+        "role": "system",
+        "content": "You are a test assistant."
+      },
+      {
+        "role": "assistant",
+        "content": "Hello, how can I help you?"
+      },
+      {
+        "role": "user",
+        "content": "I would like to place an order."
+      }
+    ],
+    "artifact": {
+      "messages": [
+        {
+          "role": "system",
+          "message": "You are a test assistant.",
+          "time": 1000000000000,
+          "secondsFromStart": 0
+        }
+      ]
+    },
+    "call": {
+      "id": "test-call-live-001",
+      "assistantId": "test-assistant-001",
+      "type": "inboundPhoneCall",
+      "status": "in-progress"
+    }
+  }
+}

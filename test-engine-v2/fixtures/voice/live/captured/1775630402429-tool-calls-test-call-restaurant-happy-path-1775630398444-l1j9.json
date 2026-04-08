@@ -1,0 +1,22 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-happy-path-1775630398444-l1j9",
+      "createdAt": "2026-04-08T06:40:02.418Z",
+      "updatedAt": "2026-04-08T06:40:02.418Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:40:02.418Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630402418-000002",
+        "type": "function",
+        "function": {
+          "name": "create_order",
+          "arguments": {}
+        }
+      }
+    ]
+  }
+}

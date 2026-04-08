@@ -1,0 +1,41 @@
+{
+  "_fixture_meta": {
+    "purpose": "Simulates a Vapi webhook payload with an unrecognised message type.",
+    "use_cases": [
+      "Verify the backend handles unknown event types gracefully (no 500)",
+      "Check that a structured error or rejection is returned",
+      "Useful for regression-testing the webhook router's default/fallback branch"
+    ],
+    "factory_delta": [
+      "message.type 'conversation-update' — not produced by any factory; represents a real Vapi event type our backend may not yet handle",
+      "message.conversation — field not present in any factory payload"
+    ]
+  },
+  "message": {
+    "type": "conversation-update",
+    "call": {
+      "id": "REPLACE_WITH_REAL_CALL_ID",
+      "orgId": "REPLACE_WITH_REAL_ORG_ID",
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:10.000Z",
+      "type": "inboundPhoneCall",
+      "status": "in-progress",
+      "assistantId": "REPLACE_WITH_REAL_ASSISTANT_ID"
+    },
+    "conversation": [
+      {
+        "role": "system",
+        "message": "You are a helpful assistant."
+      },
+      {
+        "role": "user",
+        "message": "Hello"
+      },
+      {
+        "role": "assistant",
+        "message": "Hello! How can I help you today?"
+      }
+    ],
+    "timestamp": "2024-01-15T10:00:10.000Z"
+  }
+}

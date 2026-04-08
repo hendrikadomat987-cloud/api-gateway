@@ -1,0 +1,24 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-search-1775631046793-44k6",
+      "createdAt": "2026-04-08T06:50:49.325Z",
+      "updatedAt": "2026-04-08T06:50:49.325Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:50:49.325Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775631049325-000001",
+        "type": "function",
+        "function": {
+          "name": "search_menu_item",
+          "arguments": {
+            "query": "salami"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-menu-db-1775628938445-tlfq",
+      "createdAt": "2026-04-08T06:15:41.028Z",
+      "updatedAt": "2026-04-08T06:15:41.028Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:15:41.028Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775628941028-000001",
+        "type": "function",
+        "function": {
+          "name": "get_menu",
+          "arguments": {}
+        }
+      }
+    ]
+  }
+}

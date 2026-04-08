@@ -1,0 +1,71 @@
+{
+  "_fixture_meta": {
+    "purpose": "Placeholder for a real Vapi tool-calls webhook payload.",
+    "replace": [
+      "message.call.id          → real provider_call_id",
+      "message.call.assistantId → real VAPI assistantId (restaurant or booking track)",
+      "message.call.orgId       → real Vapi organisation ID",
+      "message.toolCallList[0].id → real tool-call ID from Vapi (format: 'call_xxx...')",
+      "message.toolCallList[0].function.name → real tool name (e.g. get_menu, create_callback_request)",
+      "message.toolCallList[0].function.arguments → real arguments object or JSON string"
+    ],
+    "factory_delta": [
+      "call.orgId            — NOT present in factory buildVapiToolCall",
+      "call.type             — NOT present in factory",
+      "call.phoneNumberId    — NOT present in factory",
+      "call.customer         — NOT present in factory",
+      "toolWithToolCallList  — NOT present in factory; real Vapi includes this alongside toolCallList",
+      "function.arguments as string — factory always sends object; real Vapi may send JSON string",
+      "toolCallList[].type   — factory uses 'function'; real payloads confirm this but with extra metadata"
+    ],
+    "arguments_warning": "In real Vapi payloads, function.arguments can be a JSON-encoded string instead of an object. If your backend deserializes arguments, test both forms."
+  },
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "REPLACE_WITH_REAL_CALL_ID",
+      "orgId": "REPLACE_WITH_REAL_ORG_ID",
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:05.000Z",
+      "type": "inboundPhoneCall",
+      "status": "in-progress",
+      "assistantId": "REPLACE_WITH_REAL_ASSISTANT_ID",
+      "phoneNumberId": "REPLACE_WITH_REAL_PHONE_NUMBER_ID",
+      "customer": {
+        "number": "+49123456789"
+      }
+    },
+    "toolCallList": [
+      {
+        "id": "call_REPLACE_WITH_REAL_TOOL_CALL_ID",
+        "type": "function",
+        "function": {
+          "name": "get_menu",
+          "arguments": {}
+        }
+      }
+    ],
+    "toolWithToolCallList": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_menu",
+          "description": "Fetches the restaurant menu with categories and items.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "toolCall": {
+          "id": "call_REPLACE_WITH_REAL_TOOL_CALL_ID",
+          "type": "function",
+          "function": {
+            "name": "get_menu",
+            "arguments": {}
+          }
+        }
+      }
+    ],
+    "timestamp": "2024-01-15T10:00:05.000Z"
+  }
+}

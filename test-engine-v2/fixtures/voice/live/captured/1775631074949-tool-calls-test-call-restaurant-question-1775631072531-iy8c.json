@@ -1,0 +1,24 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-question-1775631072531-iy8c",
+      "createdAt": "2026-04-08T06:51:14.939Z",
+      "updatedAt": "2026-04-08T06:51:14.939Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:51:14.939Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775631074939-000001",
+        "type": "function",
+        "function": {
+          "name": "answer_menu_question",
+          "arguments": {
+            "question": "Welche Pizza habt ihr?"
+          }
+        }
+      }
+    ]
+  }
+}

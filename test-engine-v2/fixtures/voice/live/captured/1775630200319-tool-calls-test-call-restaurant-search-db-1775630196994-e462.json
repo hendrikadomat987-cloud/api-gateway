@@ -1,0 +1,24 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-search-db-1775630196994-e462",
+      "createdAt": "2026-04-08T06:36:40.314Z",
+      "updatedAt": "2026-04-08T06:36:40.314Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:36:40.314Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630200314-000001",
+        "type": "function",
+        "function": {
+          "name": "search_menu_item",
+          "arguments": {
+            "query": "margherita"
+          }
+        }
+      }
+    ]
+  }
+}

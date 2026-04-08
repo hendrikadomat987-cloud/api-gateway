@@ -1,0 +1,1610 @@
+{
+  "message": {
+    "timestamp": 1775576772547,
+    "type": "conversation-update",
+    "conversation": [
+      {
+        "role": "system",
+        "content": "Du bist ein professioneller, ruhiger Telefon-Agent für eine Multi-Tenant-Voice-Plattform. Du sprichst Deutsch.\n\nZiel\n- Nimm eingehende Anrufe von Kunden/Endnutzern an.\n- Erkenne schnell die Absicht (Intent) und steuere den passenden Ablauf über Backend-Tools.\n- Es gibt zwei Haupt-Tracks: (1) Buchung, (2) Restaurantbestellung.\n- Du implementierst KEINE Business-Logik selbst. Entscheidungen, Zustand (State), Validierungen, Preise, Verfügbarkeit, Warenkorb/Order-State etc. kommen aus dem Backend über Tools.\n\nAllgemeine Gesprächsregeln\n- Halte Antworten kurz, präzise und serviceorientiert.\n- Stelle immer nur die nötigsten Rückfragen, um das nächste Tool ausführen zu können.\n- Wenn etwas unklar ist (Datum/Uhrzeit/Personenzahl/Restaurant/Artikel/Menge/Adresse), frage gezielt nach.\n- Bestätige wichtige Details (Datum/Uhrzeit, Name, Telefonnummer, Bestellpositionen) bevor du final buchst/bestätigst.\n- Wenn das Backend einen Fehler/kein Ergebnis liefert: entschuldige dich kurz, biete Alternativ..."
+      },
+      {
+        "role": "assistant",
+        "content": "Hallo. Wie kann ich Ihnen helfen? Geht es um eine Buchung oder um eine Restaurantbestellung?"
+      },
+      {
+        "role": "user",
+        "content": "Hallo, ich möchte eine Pizza Margarita bestellen."
+      },
+      {
+        "role": "assistant",
+        "content": "Sehr gerne. Ich helfe Ihnen gerne bei der Pizzabstellung. Um die Bestellung aufzugeben, benötige ich noch einige Informationen. Erst so, welches Restaurant möchten Sie bestellen? Standort, Name, falls Sie einen Bevorzugten haben. Zweits. Lieferung oder Abholung? Drittens, Falzlieferung Ihre Adresse, Vierten, wie viele Pizza Margarita möchten Sie? Haben Sie noch weitere Artikel vom Menü?"
+      },
+      {
+        "role": "user",
+        "content": "Ich möchte die Pizza von der Pizzeria Piano bestellen. Ich möchte nur eine Pizza Mangasita. Eine Pizza Margarita und ich hätte gern auch noch eine Cola dazu."
+      },
+      {
+        "role": "assistant",
+        "content": "Perfekt. Lassen Sie mich das zusammenfassen. Restaurant, Pizzeria Piano, Artikel, eigentlich Pizza Margarita, Cola. 2 kurze Fragen noch. Lieferung oder Abholung? Zweitens, Falzlieferung Wie lautet Ihre Lieferadresse?"
+      },
+      {
+        "role": "user",
+        "content": "Ich möchte eine Lieferung und die Lieferadresse lautet"
+      },
+      {
+        "role": "assistant",
+        "content": "Gut,"
+      },
+      {
+        "role": "user",
+        "content": "die Lieferadresse lautet Berlin, Schloss Allee 10."
+      },
+      {
+        "role": "assistant",
+        "content": "Danke. Ich habe folgende Details notiert. Restaurant, Pizzeria Piano, Artikel, ein Pix, Pizza Margarita, Lieferart, Lieferung. Lieferadresse, Berlin, Schloss Allee, 10. Bevor ich die Bestellung aufgebe, benötige ich noch ihren Namen und eine Kontaktnummer, unter der wir sie erreichen können."
+      },
+      {
+        "role": "user",
+        "content": "Peter Müller, 0 1 3 4."
+      },
+      {
+        "role": "assistant",
+        "content": "Danke Peter Müller."
+      },
+      {
+        "role": "user",
+        "content": "Auf Wiederhören."
+      }
+    ],
+    "messages": [
+      {
+        "role": "system",
+        "message": "Du bist ein professioneller, ruhiger Telefon-Agent für eine Multi-Tenant-Voice-Plattform. Du sprichst Deutsch.\n\nZiel\n- Nimm eingehende Anrufe von Kunden/Endnutzern an.\n- Erkenne schnell die Absicht (Intent) und steuere den passenden Ablauf über Backend-Tools.\n- Es gibt zwei Haupt-Tracks: (1) Buchung, (2) Restaurantbestellung.\n- Du implementierst KEINE Business-Logik selbst. Entscheidungen, Zustand (State), Validierungen, Preise, Verfügbarkeit, Warenkorb/Order-State etc. kommen aus dem Backend über Tools.\n\nAllgemeine Gesprächsregeln\n- Halte Antworten kurz, präzise und serviceorientiert.\n- Stelle immer nur die nötigsten Rückfragen, um das nächste Tool ausführen zu können.\n- Wenn etwas unklar ist (Datum/Uhrzeit/Personenzahl/Restaurant/Artikel/Menge/Adresse), frage gezielt nach.\n- Bestätige wichtige Details (Datum/Uhrzeit, Name, Telefonnummer, Bestellpositionen) bevor du final buchst/bestätigst.\n- Wenn das Backend einen Fehler/kein Ergebnis liefert: entschuldige dich kurz, biete Alternativ...",
+        "time": 1775576651627,
+        "secondsFromStart": 0
+      },
+      {
+        "role": "bot",
+        "message": "Hallo.",
+        "time": 1775576652862,
+        "endTime": 1775576653262,
+        "secondsFromStart": 1.136,
+        "duration": 400,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Wie kann ich Ihnen helfen?",
+        "time": 1775576653532,
+        "endTime": 1775576654651.9998,
+        "secondsFromStart": 1.806,
+        "duration": 1119.999755859375,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Geht es um eine Buchung oder um eine Restaurantbestellung?",
+        "time": 1775576654862,
+        "endTime": 1775576657422,
+        "secondsFromStart": 3.136,
+        "duration": 2560,
+        "source": ""
+      },
+      {
+        "role": "user",
+        "message": "Hallo, ich möchte eine Pizza Margarita bestellen.",
+        "time": 1775576659061.9998,
+        "endTime": 1775576661782,
+        "secondsFromStart": 7.319999755859375,
+        "duration": 2720.000244140625,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "hallo",
+              "start": 7.3199997,
+              "end": 7.96,
+              "confidence": 0.81689453,
+              "punctuated_word": "Hallo,"
+            },
+            {
+              "word": "ich",
+              "start": 7.96,
+              "end": 8.12,
+              "confidence": 0.9980469,
+              "punctuated_word": "ich"
+            },
+            {
+              "word": "möchte",
+              "start": 8.12,
+              "end": 8.36,
+              "confidence": 1,
+              "punctuated_word": "möchte"
+            },
+            {
+              "word": "eine",
+              "start": 8.36,
+              "end": 8.76,
+              "confidence": 0.9951172,
+              "punctuated_word": "eine"
+            },
+            {
+              "word": "pizza",
+              "start": 8.76,
+              "end": 9.08,
+              "confidence": 0.99316406,
+              "punctuated_word": "Pizza"
+            },
+            {
+              "word": "margarita",
+              "start": 9.08,
+              "end": 9.639999,
+              "confidence": 0.84399414,
+              "punctuated_word": "Margarita"
+            },
+            {
+              "word": "bestellen",
+              "start": 9.639999,
+              "end": 10.04,
+              "confidence": 0.97094727,
+              "punctuated_word": "bestellen."
+            }
+          ]
+        }
+      },
+      {
+        "role": "bot",
+        "message": "Sehr gerne. Ich helfe Ihnen gerne bei der Pizzabstellung.",
+        "time": 1775576663342,
+        "endTime": 1775576666302,
+        "secondsFromStart": 11.616,
+        "duration": 2960,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Um die Bestellung aufzugeben, benötige ich noch einige Informationen.",
+        "time": 1775576666512,
+        "endTime": 1775576669872.001,
+        "secondsFromStart": 14.786,
+        "duration": 3360.0009765625,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Erst so, welches Restaurant möchten Sie bestellen?",
+        "time": 1775576670852,
+        "endTime": 1775576673172,
+        "secondsFromStart": 19.126,
+        "duration": 2320,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Standort,",
+        "time": 1775576673552,
+        "endTime": 1775576674111.999,
+        "secondsFromStart": 21.826,
+        "duration": 559.9990234375,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Name,",
+        "time": 1775576674612,
+        "endTime": 1775576675012,
+        "secondsFromStart": 22.886,
+        "duration": 400,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "falls Sie einen Bevorzugten haben.",
+        "time": 1775576675272,
+        "endTime": 1775576676872.001,
+        "secondsFromStart": 23.546,
+        "duration": 1600.0009765625,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Zweits.",
+        "time": 1775576677372,
+        "endTime": 1775576677851.999,
+        "secondsFromStart": 25.646,
+        "duration": 479.9990234375,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Lieferung oder Abholung?",
+        "time": 1775576678152,
+        "endTime": 1775576679672,
+        "secondsFromStart": 26.426,
+        "duration": 1520,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Drittens, Falzlieferung",
+        "time": 1775576680312,
+        "endTime": 1775576681752,
+        "secondsFromStart": 28.586,
+        "duration": 1440,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Ihre Adresse,",
+        "time": 1775576682062,
+        "endTime": 1775576682702,
+        "secondsFromStart": 30.336,
+        "duration": 640,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Vierten, wie viele Pizza Margarita möchten Sie?",
+        "time": 1775576683102,
+        "endTime": 1775576685742,
+        "secondsFromStart": 31.376,
+        "duration": 2640,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Haben Sie noch weitere Artikel vom Menü?",
+        "time": 1775576686032,
+        "endTime": 1775576688032,
+        "secondsFromStart": 34.306,
+        "duration": 2000,
+        "source": ""
+      },
+      {
+        "role": "user",
+        "message": "Ich möchte die Pizza von der Pizzeria",
+        "time": 1775576690391.998,
+        "endTime": 1775576693031.997,
+        "secondsFromStart": 38.649998046875,
+        "duration": 2639.9990234375,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "ich",
+              "start": 38.649998,
+              "end": 39.37,
+              "confidence": 0.69921875,
+              "punctuated_word": "Ich"
+            },
+            {
+              "word": "möchte",
+              "start": 39.37,
+              "end": 39.69,
+              "confidence": 1,
+              "punctuated_word": "möchte"
+            },
+            {
+              "word": "die",
+              "start": 39.69,
+              "end": 40.01,
+              "confidence": 0.9941406,
+              "punctuated_word": "die"
+            },
+            {
+              "word": "pizza",
+              "start": 40.01,
+              "end": 40.329998,
+              "confidence": 0.98535156,
+              "punctuated_word": "Pizza"
+            },
+            {
+              "word": "von",
+              "start": 40.329998,
+              "end": 40.57,
+              "confidence": 0.97998047,
+              "punctuated_word": "von"
+            },
+            {
+              "word": "der",
+              "start": 40.57,
+              "end": 40.809998,
+              "confidence": 0.8354492,
+              "punctuated_word": "der"
+            },
+            {
+              "word": "pizzeria",
+              "start": 40.809998,
+              "end": 41.289997,
+              "confidence": 0.87524414,
+              "punctuated_word": "Pizzeria"
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "Piano bestellen.",
+        "time": 1775576693282,
+        "endTime": 1775576694162.002,
+        "secondsFromStart": 41.54,
+        "duration": 880.001953125,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "piano",
+              "start": 41.54,
+              "end": 41.940002,
+              "confidence": 0.96777344,
+              "punctuated_word": "Piano"
+            },
+            {
+              "word": "bestellen",
+              "start": 41.940002,
+              "end": 42.420002,
+              "confidence": 0.7663574,
+              "punctuated_word": "bestellen."
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "Ich möchte nur eine Pizza Mangasita.",
+        "time": 1775576695192,
+        "endTime": 1775576697592.002,
+        "secondsFromStart": 43.45,
+        "duration": 2400.001953125,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "ich",
+              "start": 43.45,
+              "end": 43.690002,
+              "confidence": 1,
+              "punctuated_word": "Ich"
+            },
+            {
+              "word": "möchte",
+              "start": 43.690002,
+              "end": 43.93,
+              "confidence": 1,
+              "punctuated_word": "möchte"
+            },
+            {
+              "word": "nur",
+              "start": 43.93,
+              "end": 44.41,
+              "confidence": 0.99902344,
+              "punctuated_word": "nur"
+            },
+            {
+              "word": "eine",
+              "start": 44.41,
+              "end": 44.73,
+              "confidence": 0.9970703,
+              "punctuated_word": "eine"
+            },
+            {
+              "word": "pizza",
+              "start": 44.73,
+              "end": 45.05,
+              "confidence": 1,
+              "punctuated_word": "Pizza"
+            },
+            {
+              "word": "mangasita",
+              "start": 45.05,
+              "end": 45.850002,
+              "confidence": 0.6737671,
+              "punctuated_word": "Mangasita."
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "Eine Pizza Margarita und",
+        "time": 1775576698382.003,
+        "endTime": 1775576700142,
+        "secondsFromStart": 46.6400029296875,
+        "duration": 1759.9970703125,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "eine",
+              "start": 46.640003,
+              "end": 46.960003,
+              "confidence": 0.99902344,
+              "punctuated_word": "Eine"
+            },
+            {
+              "word": "pizza",
+              "start": 46.960003,
+              "end": 47.280003,
+              "confidence": 1,
+              "punctuated_word": "Pizza"
+            },
+            {
+              "word": "margarita",
+              "start": 47.280003,
+              "end": 47.920002,
+              "confidence": 0.83862305,
+              "punctuated_word": "Margarita"
+            },
+            {
+              "word": "und",
+              "start": 47.920002,
+              "end": 48.4,
+              "confidence": 0.9951172,
+              "punctuated_word": "und"
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "ich hätte gern auch noch eine Cola dazu.",
+        "time": 1775576700722.003,
+        "endTime": 1775576702722.003,
+        "secondsFromStart": 48.9800029296875,
+        "duration": 2000,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "ich",
+              "start": 48.980003,
+              "end": 49.300003,
+              "confidence": 1,
+              "punctuated_word": "ich"
+            },
+            {
+              "word": "hätte",
+              "start": 49.300003,
+              "end": 49.460003,
+              "confidence": 0.9921875,
+              "punctuated_word": "hätte"
+            },
+            {
+              "word": "gern",
+              "start": 49.460003,
+              "end": 49.7,
+              "confidence": 0.7685547,
+              "punctuated_word": "gern"
+            },
+            {
+              "word": "auch",
+              "start": 49.7,
+              "end": 49.86,
+              "confidence": 0.9980469,
+              "punctuated_word": "auch"
+            },
+            {
+              "word": "noch",
+              "start": 49.86,
+              "end": 50.100002,
+              "confidence": 0.99902344,
+              "punctuated_word": "noch"
+            },
+            {
+              "word": "eine",
+              "start": 50.100002,
+              "end": 50.260002,
+              "confidence": 1,
+              "punctuated_word": "eine"
+            },
+            {
+              "word": "cola",
+              "start": 50.260002,
+              "end": 50.58,
+              "confidence": 0.9741211,
+              "punctuated_word": "Cola"
+            },
+            {
+              "word": "dazu",
+              "start": 50.58,
+              "end": 50.980003,
+              "confidence": 0.92626953,
+              "punctuated_word": "dazu."
+            }
+          ]
+        }
+      },
+      {
+        "role": "bot",
+        "message": "Perfekt.",
+        "time": 1775576704392,
+        "endTime": 1775576705032,
+        "secondsFromStart": 52.666,
+        "duration": 640,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Lassen Sie mich das zusammenfassen.",
+        "time": 1775576705422,
+        "endTime": 1775576706862,
+        "secondsFromStart": 53.696,
+        "duration": 1440,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Restaurant,",
+        "time": 1775576708112.003,
+        "endTime": 1775576708672,
+        "secondsFromStart": 56.3860029296875,
+        "duration": 559.9970703125,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Pizzeria Piano,",
+        "time": 1775576709172,
+        "endTime": 1775576710292,
+        "secondsFromStart": 57.446,
+        "duration": 1120,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Artikel,",
+        "time": 1775576710782,
+        "endTime": 1775576711342.002,
+        "secondsFromStart": 59.056,
+        "duration": 560.001953125,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "eigentlich Pizza Margarita,",
+        "time": 1775576711922,
+        "endTime": 1775576713522,
+        "secondsFromStart": 60.196,
+        "duration": 1600,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Cola.",
+        "time": 1775576713962,
+        "endTime": 1775576714922,
+        "secondsFromStart": 62.236,
+        "duration": 960,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "2 kurze Fragen noch.",
+        "time": 1775576715822,
+        "endTime": 1775576717501.995,
+        "secondsFromStart": 64.096,
+        "duration": 1679.9951171875,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Lieferung oder Abholung?",
+        "time": 1775576719102,
+        "endTime": 1775576720781.99,
+        "secondsFromStart": 67.376,
+        "duration": 1679.989990234375,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Zweitens, Falzlieferung",
+        "time": 1775576721432,
+        "endTime": 1775576722952,
+        "secondsFromStart": 69.706,
+        "duration": 1520,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Wie lautet Ihre Lieferadresse?",
+        "time": 1775576723541.995,
+        "endTime": 1775576725141.994,
+        "secondsFromStart": 71.8159951171875,
+        "duration": 1599.998779296875,
+        "source": ""
+      },
+      {
+        "role": "user",
+        "message": "Ich möchte eine Lieferung",
+        "time": 1775576727681.995,
+        "endTime": 1775576729041.995,
+        "secondsFromStart": 75.9399951171875,
+        "duration": 1360,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "ich",
+              "start": 75.939995,
+              "end": 76.259995,
+              "confidence": 0.9980469,
+              "punctuated_word": "Ich"
+            },
+            {
+              "word": "möchte",
+              "start": 76.259995,
+              "end": 76.579994,
+              "confidence": 1,
+              "punctuated_word": "möchte"
+            },
+            {
+              "word": "eine",
+              "start": 76.579994,
+              "end": 76.899994,
+              "confidence": 0.99609375,
+              "punctuated_word": "eine"
+            },
+            {
+              "word": "lieferung",
+              "start": 76.899994,
+              "end": 77.299995,
+              "confidence": 0.9970703,
+              "punctuated_word": "Lieferung"
+            }
+          ]
+        }
+      },
+      {
+        "role": "bot",
+        "message": "Gut,",
+        "time": 1775576731721.996,
+        "endTime": 1775576732041.995,
+        "secondsFromStart": 79.99599609375,
+        "duration": 319.9990234375,
+        "source": ""
+      },
+      {
+        "role": "user",
+        "message": "und die Lieferadresse lautet",
+        "time": 1775576731281.99,
+        "endTime": 1775576733122,
+        "secondsFromStart": 79.53998999023437,
+        "duration": 1840.010009765625,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "und",
+              "start": 79.53999,
+              "end": 79.86,
+              "confidence": 0.6196289,
+              "punctuated_word": "und"
+            },
+            {
+              "word": "die",
+              "start": 79.86,
+              "end": 80.1,
+              "confidence": 0.9980469,
+              "punctuated_word": "die"
+            },
+            {
+              "word": "lieferadresse",
+              "start": 80.1,
+              "end": 80.82,
+              "confidence": 0.99365234,
+              "punctuated_word": "Lieferadresse"
+            },
+            {
+              "word": "lautet",
+              "start": 80.82,
+              "end": 81.38,
+              "confidence": 0.9980469,
+              "punctuated_word": "lautet"
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "die Lieferadresse lautet Berlin,",
+        "time": 1775576733842,
+        "endTime": 1775576735522,
+        "secondsFromStart": 82.1,
+        "duration": 1680,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "die",
+              "start": 82.1,
+              "end": 82.42,
+              "confidence": 0.9819336,
+              "punctuated_word": "die"
+            },
+            {
+              "word": "lieferadresse",
+              "start": 82.42,
+              "end": 82.9,
+              "confidence": 0.9970703,
+              "punctuated_word": "Lieferadresse"
+            },
+            {
+              "word": "lautet",
+              "start": 82.9,
+              "end": 83.38,
+              "confidence": 0.9980469,
+              "punctuated_word": "lautet"
+            },
+            {
+              "word": "berlin",
+              "start": 83.38,
+              "end": 83.78,
+              "confidence": 0.6668701,
+              "punctuated_word": "Berlin,"
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "Schloss Allee 10.",
+        "time": 1775576736282,
+        "endTime": 1775576737321.994,
+        "secondsFromStart": 84.54,
+        "duration": 1039.993896484375,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "schloss",
+              "start": 84.54,
+              "end": 85.02,
+              "confidence": 0.5703125,
+              "punctuated_word": "Schloss"
+            },
+            {
+              "word": "allee",
+              "start": 85.02,
+              "end": 85.34,
+              "confidence": 0.8718262,
+              "punctuated_word": "Allee"
+            },
+            {
+              "word": "10",
+              "start": 85.34,
+              "end": 85.579994,
+              "confidence": 0.84643555,
+              "punctuated_word": "10."
+            }
+          ]
+        }
+      },
+      {
+        "role": "bot",
+        "message": "Danke. Ich habe folgende Details notiert.",
+        "time": 1775576739532,
+        "endTime": 1775576741932,
+        "secondsFromStart": 87.806,
+        "duration": 2400,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Restaurant, Pizzeria Piano,",
+        "time": 1775576742982.005,
+        "endTime": 1775576745062,
+        "secondsFromStart": 91.2560048828125,
+        "duration": 2079.9951171875,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Artikel,",
+        "time": 1775576746102,
+        "endTime": 1775576746582,
+        "secondsFromStart": 94.376,
+        "duration": 480,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "ein Pix, Pizza Margarita,",
+        "time": 1775576746942,
+        "endTime": 1775576748781.99,
+        "secondsFromStart": 95.216,
+        "duration": 1839.989990234375,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Lieferart,",
+        "time": 1775576750962,
+        "endTime": 1775576751682,
+        "secondsFromStart": 99.236,
+        "duration": 720,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Lieferung.",
+        "time": 1775576751902,
+        "endTime": 1775576752382.01,
+        "secondsFromStart": 100.176,
+        "duration": 480.010009765625,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Lieferadresse,",
+        "time": 1775576753032,
+        "endTime": 1775576753832.004,
+        "secondsFromStart": 101.306,
+        "duration": 800.00390625,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Berlin,",
+        "time": 1775576754222,
+        "endTime": 1775576754782,
+        "secondsFromStart": 102.496,
+        "duration": 560,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Schloss Allee, 10. Bevor ich die Bestellung aufgebe, benötige",
+        "time": 1775576755172,
+        "endTime": 1775576759012,
+        "secondsFromStart": 103.446,
+        "duration": 3840,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "ich noch ihren Namen und eine Kontaktnummer, unter der wir sie erreichen können.",
+        "time": 1775576759112,
+        "endTime": 1775576763032,
+        "secondsFromStart": 107.386,
+        "duration": 3920,
+        "source": ""
+      },
+      {
+        "role": "bot",
+        "message": "Danke Peter Müller.",
+        "time": 1775576771022,
+        "endTime": 1775576772062,
+        "secondsFromStart": 119.296,
+        "duration": 1040,
+        "source": ""
+      },
+      {
+        "role": "user",
+        "message": "Peter Müller, 0 1 3 4.",
+        "time": 1775576765822,
+        "endTime": 1775576767662.006,
+        "secondsFromStart": 114.08,
+        "duration": 1840.006103515625,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "peter",
+              "start": 114.08,
+              "end": 114.48,
+              "confidence": 0.90771484,
+              "punctuated_word": "Peter"
+            },
+            {
+              "word": "müller",
+              "start": 114.48,
+              "end": 115.04,
+              "confidence": 0.76953125,
+              "punctuated_word": "Müller,"
+            },
+            {
+              "word": "0",
+              "start": 115.04,
+              "end": 115.200005,
+              "confidence": 0.9716797,
+              "punctuated_word": "0"
+            },
+            {
+              "word": "1",
+              "start": 115.200005,
+              "end": 115.44,
+              "confidence": 0.86035156,
+              "punctuated_word": "1"
+            },
+            {
+              "word": "3",
+              "start": 115.44,
+              "end": 115.76,
+              "confidence": 0.90771484,
+              "punctuated_word": "3"
+            },
+            {
+              "word": "4",
+              "start": 115.76,
+              "end": 115.920006,
+              "confidence": 0.9628906,
+              "punctuated_word": "4."
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "message": "Auf Wiederhören.",
+        "time": 1775576772292,
+        "endTime": 1775576773012.004,
+        "secondsFromStart": 120.55,
+        "duration": 720.00390625,
+        "metadata": {
+          "wordLevelConfidence": [
+            {
+              "word": "auf",
+              "start": 120.55,
+              "end": 120.87,
+              "confidence": 0.9970703,
+              "punctuated_word": "Auf"
+            },
+            {
+              "word": "wiederhören",
+              "start": 120.87,
+              "end": 121.270004,
+              "confidence": 0.9941406,
+              "punctuated_word": "Wiederhören."
+            }
+          ]
+        }
+      }
+    ],
+    "messagesOpenAIFormatted": [],
+    "artifact": {
+      "messages": [
+        {
+          "role": "system",
+          "message": "Du bist ein professioneller, ruhiger Telefon-Agent für eine Multi-Tenant-Voice-Plattform. Du sprichst Deutsch.\n\nZiel\n- Nimm eingehende Anrufe von Kunden/Endnutzern an.\n- Erkenne schnell die Absicht (Intent) und steuere den passenden Ablauf über Backend-Tools.\n- Es gibt zwei Haupt-Tracks: (1) Buchung, (2) Restaurantbestellung.\n- Du implementierst KEINE Business-Logik selbst. Entscheidungen, Zustand (State), Validierungen, Preise, Verfügbarkeit, Warenkorb/Order-State etc. kommen aus dem Backend über Tools.\n\nAllgemeine Gesprächsregeln\n- Halte Antworten kurz, präzise und serviceorientiert.\n- Stelle immer nur die nötigsten Rückfragen, um das nächste Tool ausführen zu können.\n- Wenn etwas unklar ist (Datum/Uhrzeit/Personenzahl/Restaurant/Artikel/Menge/Adresse), frage gezielt nach.\n- Bestätige wichtige Details (Datum/Uhrzeit, Name, Telefonnummer, Bestellpositionen) bevor du final buchst/bestätigst.\n- Wenn das Backend einen Fehler/kein Ergebnis liefert: entschuldige dich kurz, biete Alternativ...",
+          "time": 1775576651627,
+          "secondsFromStart": 0
+        },
+        {
+          "role": "bot",
+          "message": "Hallo. Wie kann ich Ihnen helfen? Geht es um eine Buchung oder um eine Restaurantbestellung?",
+          "time": 1775576652862,
+          "endTime": 1775576657422,
+          "secondsFromStart": 1.136,
+          "duration": 4079.999755859375,
+          "source": ""
+        },
+        {
+          "role": "user",
+          "message": "Hallo, ich möchte eine Pizza Margarita bestellen.",
+          "time": 1775576659061.9998,
+          "endTime": 1775576661782,
+          "secondsFromStart": 7.319999755859375,
+          "duration": 2720.000244140625,
+          "metadata": {
+            "wordLevelConfidence": [
+              {
+                "word": "hallo",
+                "start": 7.3199997,
+                "end": 7.96,
+                "confidence": 0.81689453,
+                "punctuated_word": "Hallo,"
+              },
+              {
+                "word": "ich",
+                "start": 7.96,
+                "end": 8.12,
+                "confidence": 0.9980469,
+                "punctuated_word": "ich"
+              },
+              {
+                "word": "möchte",
+                "start": 8.12,
+                "end": 8.36,
+                "confidence": 1,
+                "punctuated_word": "möchte"
+              },
+              {
+                "word": "eine",
+                "start": 8.36,
+                "end": 8.76,
+                "confidence": 0.9951172,
+                "punctuated_word": "eine"
+              },
+              {
+                "word": "pizza",
+                "start": 8.76,
+                "end": 9.08,
+                "confidence": 0.99316406,
+                "punctuated_word": "Pizza"
+              },
+              {
+                "word": "margarita",
+                "start": 9.08,
+                "end": 9.639999,
+                "confidence": 0.84399414,
+                "punctuated_word": "Margarita"
+              },
+              {
+                "word": "bestellen",
+                "start": 9.639999,
+                "end": 10.04,
+                "confidence": 0.97094727,
+                "punctuated_word": "bestellen."
+              }
+            ]
+          }
+        },
+        {
+          "role": "bot",
+          "message": "Sehr gerne. Ich helfe Ihnen gerne bei der Pizzabstellung. Um die Bestellung aufzugeben, benötige ich noch einige Informationen. Erst so, welches Restaurant möchten Sie bestellen? Standort, Name, falls Sie einen Bevorzugten haben. Zweits. Lieferung oder Abholung? Drittens, Falzlieferung Ihre Adresse, Vierten, wie viele Pizza Margarita möchten Sie? Haben Sie noch weitere Artikel vom Menü?",
+          "time": 1775576663342,
+          "endTime": 1775576688032,
+          "secondsFromStart": 11.616,
+          "duration": 19920,
+          "source": ""
+        },
+        {
+          "role": "user",
+          "message": "Ich möchte die Pizza von der Pizzeria Piano bestellen. Ich möchte nur eine Pizza Mangasita. Eine Pizza Margarita und ich hätte gern auch noch eine Cola dazu.",
+          "time": 1775576690391.998,
+          "endTime": 1775576702722.003,
+          "secondsFromStart": 38.649998046875,
+          "duration": 9680,
+          "metadata": {
+            "wordLevelConfidence": [
+              {
+                "word": "ich",
+                "start": 38.649998,
+                "end": 39.37,
+                "confidence": 0.69921875,
+                "punctuated_word": "Ich"
+              },
+              {
+                "word": "möchte",
+                "start": 39.37,
+                "end": 39.69,
+                "confidence": 1,
+                "punctuated_word": "möchte"
+              },
+              {
+                "word": "die",
+                "start": 39.69,
+                "end": 40.01,
+                "confidence": 0.9941406,
+                "punctuated_word": "die"
+              },
+              {
+                "word": "pizza",
+                "start": 40.01,
+                "end": 40.329998,
+                "confidence": 0.98535156,
+                "punctuated_word": "Pizza"
+              },
+              {
+                "word": "von",
+                "start": 40.329998,
+                "end": 40.57,
+                "confidence": 0.97998047,
+                "punctuated_word": "von"
+              },
+              {
+                "word": "der",
+                "start": 40.57,
+                "end": 40.809998,
+                "confidence": 0.8354492,
+                "punctuated_word": "der"
+              },
+              {
+                "word": "pizzeria",
+                "start": 40.809998,
+                "end": 41.289997,
+                "confidence": 0.87524414,
+                "punctuated_word": "Pizzeria"
+              }
+            ]
+          }
+        },
+        {
+          "role": "bot",
+          "message": "Perfekt. Lassen Sie mich das zusammenfassen. Restaurant, Pizzeria Piano, Artikel, eigentlich Pizza Margarita, Cola. 2 kurze Fragen noch. Lieferung oder Abholung? Zweitens, Falzlieferung Wie lautet Ihre Lieferadresse?",
+          "time": 1775576704392,
+          "endTime": 1775576725141.994,
+          "secondsFromStart": 52.666,
+          "duration": 13359.98291015625,
+          "source": ""
+        },
+        {
+          "role": "user",
+          "message": "Ich möchte eine Lieferung und die Lieferadresse lautet",
+          "time": 1775576727681.995,
+          "endTime": 1775576733122,
+          "secondsFromStart": 75.9399951171875,
+          "duration": 3200.010009765625,
+          "metadata": {
+            "wordLevelConfidence": [
+              {
+                "word": "ich",
+                "start": 75.939995,
+                "end": 76.259995,
+                "confidence": 0.9980469,
+                "punctuated_word": "Ich"
+              },
+              {
+                "word": "möchte",
+                "start": 76.259995,
+                "end": 76.579994,
+                "confidence": 1,
+                "punctuated_word": "möchte"
+              },
+              {
+                "word": "eine",
+                "start": 76.579994,
+                "end": 76.899994,
+                "confidence": 0.99609375,
+                "punctuated_word": "eine"
+              },
+              {
+                "word": "lieferung",
+                "start": 76.899994,
+                "end": 77.299995,
+                "confidence": 0.9970703,
+                "punctuated_word": "Lieferung"
+              }
+            ]
+          }
+        },
+        {
+          "role": "bot",
+          "message": "Gut,",
+          "time": 1775576731721.996,
+          "endTime": 1775576732041.995,
+          "secondsFromStart": 79.99599609375,
+          "duration": 319.9990234375,
+          "source": ""
+        },
+        {
+          "role": "user",
+          "message": "die Lieferadresse lautet Berlin, Schloss Allee 10.",
+          "time": 1775576733842,
+          "endTime": 1775576737321.994,
+          "secondsFromStart": 82.1,
+          "duration": 2719.993896484375,
+          "metadata": {
+            "wordLevelConfidence": [
+              {
+                "word": "die",
+                "start": 82.1,
+                "end": 82.42,
+                "confidence": 0.9819336,
+                "punctuated_word": "die"
+              },
+              {
+                "word": "lieferadresse",
+                "start": 82.42,
+                "end": 82.9,
+                "confidence": 0.9970703,
+                "punctuated_word": "Lieferadresse"
+              },
+              {
+                "word": "lautet",
+                "start": 82.9,
+                "end": 83.38,
+                "confidence": 0.9980469,
+                "punctuated_word": "lautet"
+              },
+              {
+                "word": "berlin",
+                "start": 83.38,
+                "end": 83.78,
+                "confidence": 0.6668701,
+                "punctuated_word": "Berlin,"
+              }
+            ]
+          }
+        },
+        {
+          "role": "bot",
+          "message": "Danke. Ich habe folgende Details notiert. Restaurant, Pizzeria Piano, Artikel, ein Pix, Pizza Margarita, Lieferart, Lieferung. Lieferadresse, Berlin, Schloss Allee, 10. Bevor ich die Bestellung aufgebe, benötige ich noch ihren Namen und eine Kontaktnummer, unter der wir sie erreichen können.",
+          "time": 1775576739532,
+          "endTime": 1775576763032,
+          "secondsFromStart": 87.806,
+          "duration": 17119.9990234375,
+          "source": ""
+        },
+        {
+          "role": "user",
+          "message": "Peter Müller, 0 1 3 4.",
+          "time": 1775576765822,
+          "endTime": 1775576767662.006,
+          "secondsFromStart": 114.08,
+          "duration": 1840.006103515625,
+          "metadata": {
+            "wordLevelConfidence": [
+              {
+                "word": "peter",
+                "start": 114.08,
+                "end": 114.48,
+                "confidence": 0.90771484,
+                "punctuated_word": "Peter"
+              },
+              {
+                "word": "müller",
+                "start": 114.48,
+                "end": 115.04,
+                "confidence": 0.76953125,
+                "punctuated_word": "Müller,"
+              },
+              {
+                "word": "0",
+                "start": 115.04,
+                "end": 115.200005,
+                "confidence": 0.9716797,
+                "punctuated_word": "0"
+              },
+              {
+                "word": "1",
+                "start": 115.200005,
+                "end": 115.44,
+                "confidence": 0.86035156,
+                "punctuated_word": "1"
+              },
+              {
+                "word": "3",
+                "start": 115.44,
+                "end": 115.76,
+                "confidence": 0.90771484,
+                "punctuated_word": "3"
+              },
+              {
+                "word": "4",
+                "start": 115.76,
+                "end": 115.920006,
+                "confidence": 0.9628906,
+                "punctuated_word": "4."
+              }
+            ]
+          }
+        },
+        {
+          "role": "bot",
+          "message": "Danke Peter Müller.",
+          "time": 1775576771022,
+          "endTime": 1775576772062,
+          "secondsFromStart": 119.296,
+          "duration": 1040,
+          "source": ""
+        },
+        {
+          "role": "user",
+          "message": "Auf Wiederhören.",
+          "time": 1775576772292,
+          "endTime": 1775576773012.004,
+          "secondsFromStart": 120.55,
+          "duration": 720.00390625,
+          "metadata": {
+            "wordLevelConfidence": [
+              {
+                "word": "auf",
+                "start": 120.55,
+                "end": 120.87,
+                "confidence": 0.9970703,
+                "punctuated_word": "Auf"
+              },
+              {
+                "word": "wiederhören",
+                "start": 120.87,
+                "end": 121.270004,
+                "confidence": 0.9941406,
+                "punctuated_word": "Wiederhören."
+              }
+            ]
+          }
+        }
+      ],
+      "messagesOpenAIFormatted": [
+        {
+          "role": "system",
+          "content": "Du bist ein professioneller, ruhiger Telefon-Agent für eine Multi-Tenant-Voice-Plattform. Du sprichst Deutsch.\n\nZiel\n- Nimm eingehende Anrufe von Kunden/Endnutzern an.\n- Erkenne schnell die Absicht (Intent) und steuere den passenden Ablauf über Backend-Tools.\n- Es gibt zwei Haupt-Tracks: (1) Buchung, (2) Restaurantbestellung.\n- Du implementierst KEINE Business-Logik selbst. Entscheidungen, Zustand (State), Validierungen, Preise, Verfügbarkeit, Warenkorb/Order-State etc. kommen aus dem Backend über Tools.\n\nAllgemeine Gesprächsregeln\n- Halte Antworten kurz, präzise und serviceorientiert.\n- Stelle immer nur die nötigsten Rückfragen, um das nächste Tool ausführen zu können.\n- Wenn etwas unklar ist (Datum/Uhrzeit/Personenzahl/Restaurant/Artikel/Menge/Adresse), frage gezielt nach.\n- Bestätige wichtige Details (Datum/Uhrzeit, Name, Telefonnummer, Bestellpositionen) bevor du final buchst/bestätigst.\n- Wenn das Backend einen Fehler/kein Ergebnis liefert: entschuldige dich kurz, biete Alternativ..."
+        },
+        {
+          "role": "assistant",
+          "content": "Hallo. Wie kann ich Ihnen helfen? Geht es um eine Buchung oder um eine Restaurantbestellung?"
+        },
+        {
+          "role": "user",
+          "content": "Hallo, ich möchte eine Pizza Margarita bestellen."
+        },
+        {
+          "role": "assistant",
+          "content": "Sehr gerne. Ich helfe Ihnen gerne bei der Pizzabstellung. Um die Bestellung aufzugeben, benötige ich noch einige Informationen. Erst so, welches Restaurant möchten Sie bestellen? Standort, Name, falls Sie einen Bevorzugten haben. Zweits. Lieferung oder Abholung? Drittens, Falzlieferung Ihre Adresse, Vierten, wie viele Pizza Margarita möchten Sie? Haben Sie noch weitere Artikel vom Menü?"
+        },
+        {
+          "role": "user",
+          "content": "Ich möchte die Pizza von der Pizzeria Piano bestellen. Ich möchte nur eine Pizza Mangasita. Eine Pizza Margarita und ich hätte gern auch noch eine Cola dazu."
+        },
+        {
+          "role": "assistant",
+          "content": "Perfekt. Lassen Sie mich das zusammenfassen. Restaurant, Pizzeria Piano, Artikel, eigentlich Pizza Margarita, Cola. 2 kurze Fragen noch. Lieferung oder Abholung? Zweitens, Falzlieferung Wie lautet Ihre Lieferadresse?"
+        },
+        {
+          "role": "user",
+          "content": "Ich möchte eine Lieferung und die Lieferadresse lautet"
+        },
+        {
+          "role": "assistant",
+          "content": "Gut,"
+        },
+        {
+          "role": "user",
+          "content": "die Lieferadresse lautet Berlin, Schloss Allee 10."
+        },
+        {
+          "role": "assistant",
+          "content": "Danke. Ich habe folgende Details notiert. Restaurant, Pizzeria Piano, Artikel, ein Pix, Pizza Margarita, Lieferart, Lieferung. Lieferadresse, Berlin, Schloss Allee, 10. Bevor ich die Bestellung aufgebe, benötige ich noch ihren Namen und eine Kontaktnummer, unter der wir sie erreichen können."
+        },
+        {
+          "role": "user",
+          "content": "Peter Müller, 0 1 3 4."
+        },
+        {
+          "role": "assistant",
+          "content": "Danke Peter Müller."
+        },
+        {
+          "role": "user",
+          "content": "Auf Wiederhören."
+        }
+      ],
+      "variables": {
+        "now": "Apr 7, 2026, 3:44 PM UTC",
+        "currentDateTime": "Tuesday, April 7, 2026 at 3:44 PM UTC",
+        "date": "Apr 7, 2026 UTC",
+        "time": "3:44 PM UTC",
+        "year": "2026",
+        "month": "April",
+        "day": "7",
+        "customer": {
+          "number": "+491704600874",
+          "sipUri": "sip:+491704600874@44.229.228.186:5060"
+        },
+        "phoneNumber": {
+          "id": "8df2bae4-afaf-405a-a7c6-3aa496bfe37b",
+          "orgId": "2e3874d1-0989-45dd-a3b5-45f1f3008091",
+          "assistantId": "696456cd-bdd2-4957-8c29-b9133946b06a",
+          "number": "+19705454458",
+          "createdAt": "2026-04-04T19:59:11.335Z",
+          "updatedAt": "2026-04-07T15:03:41.143Z",
+          "provider": "vapi",
+          "server": {
+            "url": "https://supersensitive-rae-multinominal.ngrok-free.dev/api/v1/voice/providers/vapi/webhook",
+            "timeoutSeconds": 20
+          },
+          "status": "active",
+          "providerResourceId": "d60613d8-7023-4c69-8716-6db2230daf01"
+        },
+        "transport": {
+          "conversationType": "voice",
+          "provider": "vapi.sip",
+          "callSid": "304123ec-ddb7-41e9-a9cd-4aeae85e0c0c",
+          "sbcCallSid": "799712142-3984565451-1998171247@msc1.382COM.COM"
+        },
+        "call": {
+          "id": "019d689d-96df-788d-b41e-770011b04e57",
+          "type": "inboundPhoneCall",
+          "status": "ringing",
+          "createdAt": "2026-04-07T15:44:11.487Z",
+          "phoneCallProvider": "vapi",
+          "transport": {
+            "conversationType": "voice",
+            "provider": "vapi.sip",
+            "callSid": "304123ec-ddb7-41e9-a9cd-4aeae85e0c0c",
+            "sbcCallSid": "799712142-3984565451-1998171247@msc1.382COM.COM"
+          }
+        },
+        "cid": "799712142-3984565451-1998171247@msc1.382COM.COM",
+        "account-sid": "c033b672-5b99-42ae-9ce2-b231e9a522fb",
+        "forwarded-for": "64.125.111.10",
+        "application-sid": "79d078c8-76b2-452a-99e0-ddd5abbf6269",
+        "voip-carrier-sid": "a5569621-84ac-49cc-a8b8-11c7fb96b905",
+        "originating-carrier": "382com"
+      },
+      "variableValues": {
+        "now": "Apr 7, 2026, 3:44 PM UTC",
+        "currentDateTime": "Tuesday, April 7, 2026 at 3:44 PM UTC",
+        "date": "Apr 7, 2026 UTC",
+        "time": "3:44 PM UTC",
+        "year": "2026",
+        "month": "April",
+        "day": "7",
+        "customer": {
+          "number": "+491704600874",
+          "sipUri": "sip:+491704600874@44.229.228.186:5060"
+        },
+        "phoneNumber": {
+          "id": "8df2bae4-afaf-405a-a7c6-3aa496bfe37b",
+          "orgId": "2e3874d1-0989-45dd-a3b5-45f1f3008091",
+          "assistantId": "696456cd-bdd2-4957-8c29-b9133946b06a",
+          "number": "+19705454458",
+          "createdAt": "2026-04-04T19:59:11.335Z",
+          "updatedAt": "2026-04-07T15:03:41.143Z",
+          "provider": "vapi",
+          "server": {
+            "url": "https://supersensitive-rae-multinominal.ngrok-free.dev/api/v1/voice/providers/vapi/webhook",
+            "timeoutSeconds": 20
+          },
+          "status": "active",
+          "providerResourceId": "d60613d8-7023-4c69-8716-6db2230daf01"
+        },
+        "transport": {
+          "conversationType": "voice",
+          "provider": "vapi.sip",
+          "callSid": "304123ec-ddb7-41e9-a9cd-4aeae85e0c0c",
+          "sbcCallSid": "799712142-3984565451-1998171247@msc1.382COM.COM"
+        },
+        "call": {
+          "id": "019d689d-96df-788d-b41e-770011b04e57",
+          "type": "inboundPhoneCall",
+          "status": "ringing",
+          "createdAt": "2026-04-07T15:44:11.487Z",
+          "phoneCallProvider": "vapi",
+          "transport": {
+            "conversationType": "voice",
+            "provider": "vapi.sip",
+            "callSid": "304123ec-ddb7-41e9-a9cd-4aeae85e0c0c",
+            "sbcCallSid": "799712142-3984565451-1998171247@msc1.382COM.COM"
+          }
+        },
+        "cid": "799712142-3984565451-1998171247@msc1.382COM.COM",
+        "account-sid": "c033b672-5b99-42ae-9ce2-b231e9a522fb",
+        "forwarded-for": "64.125.111.10",
+        "application-sid": "79d078c8-76b2-452a-99e0-ddd5abbf6269",
+        "voip-carrier-sid": "a5569621-84ac-49cc-a8b8-11c7fb96b905",
+        "originating-carrier": "382com"
+      }
+    },
+    "call": {
+      "id": "019d689d-96df-788d-b41e-770011b04e57",
+      "orgId": "2e3874d1-0989-45dd-a3b5-45f1f3008091",
+      "createdAt": "2026-04-07T15:44:11.487Z",
+      "updatedAt": "2026-04-07T15:44:11.487Z",
+      "type": "inboundPhoneCall",
+      "cost": 0,
+      "monitor": {
+        "listenUrl": "wss://phone-call-websocket.aws-us-west-2-backend-production1.vapi.ai/019d689d-96df-788d-b41e-770011b04e57/listen",
+        "controlUrl": "https://phone-call-websocket.aws-us-west-2-backend-production1.vapi.ai/019d689d-96df-788d-b41e-770011b04e57/control"
+      },
+      "transport": {
+        "conversationType": "voice",
+        "provider": "vapi.sip",
+        "callSid": "304123ec-ddb7-41e9-a9cd-4aeae85e0c0c",
+        "sbcCallSid": "799712142-3984565451-1998171247@msc1.382COM.COM"
+      },
+      "phoneCallProvider": "vapi",
+      "phoneCallProviderId": "304123ec-ddb7-41e9-a9cd-4aeae85e0c0c",
+      "phoneCallTransport": "sip",
+      "phoneCallProviderDetails": {
+        "sip": {
+          "raw": "INVITE sip:9705454458@172.30.59.243:5060 SIP/2.0\r\nVia: SIP/2.0/UDP 44.229.228.186;rport=5060;branch=z9hG4bK7NBQ9UF1ZNjBF;received=172.31.57.86\r\nMax-Forwards: 70\r\nFrom: <sip:+491704600874@44.229.228.186:5060>;tag=cc1e7ZaSBm58e\r\nTo: <sip:9705454458@192.168.250.45>\r\nCall-ID: 76aa4c0c-ad3b-123f-e7b2-0ec7040a32ad\r\nCSeq: 113234533 INVITE\r\nContact: <sip:172.31.57.86:5060>\r\nAccept: application/sdp\r\nAllow: PUBLISH, MESSAGE, UPDATE, PRACK, SUBSCRIBE, REFER, INFO, NOTIFY, REGISTER, OPTIONS, BYE, INVITE, ACK, CANCEL\r\nSupported: 100rel, timer\r\nMin-SE: 600\r\nPrivacy: none\r\nContent-Type: application/sdp\r\nContent-Length: 306\r\nX-Account-Sid: c033b672-5b99-42ae-9ce2-b231e9a522fb\r\nX-CID: 799712142-3984565451-1998171247@msc1.382COM.COM\r\nX-Forwarded-For: 64.125.111.10\r\nX-Originating-Carrier: 382com\r\nX-Voip-Carrier-Sid: a5569621-84ac-49cc-a8b8-11c7fb96b905\r\nX-Application-Sid: 79d078c8-76b2-452a-99e0-ddd5abbf6269\r\nIdentity: eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9jci5jY2lkLm5ldXN0YXIuYml6L2NjaWQvYXV0aG4vdjIvY2VydHMvMTExODQuMTExMDQucGVtIn0.eyJhdHRlc3QiOiJDIiwiZGVzdCI6eyJ0biI6WyIxOTcwNTQ1NDQ1OCJdfSwiaWF0IjoxNzc1NTc2NjUxLCJvcmlnIjp7InRuIjoiNDkxNzA0NjAwODc0In0sIm9yaWdpZCI6IjcwYzc4YTc0LWRhNzQtMTFlYi04ZDE5LTAyNDJhYzEzMDAwMyJ9.YAGEoBwftehqDmJqvCysobJTAOg932C-U4Ea2RoXHShZqerrC9ubsxkj7GbRluo0YFWpdP3JQUCEsPtInUO_Xg;info=<https://cr.ccid.neustar.biz/ccid/authn/v2/certs/11184.11104.pem>;alg=ES256;ppt=\"shaken\"\r\nP-Asserted-Identity: <sip:+491704600874@207.223.78.171:5060>\r\n\r\nv=0\r\no=msc1 947016 480145 IN IP4 172.30.42.239\r\ns=sip call\r\nc=IN IP4 172.30.42.239\r\nt=0 0\r\nm=audio 59194 RTP/AVP 0 8 18 101\r\na=maxptime:20\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:18 G729/8000\r\na=fmtp:18 annexb=no\r\na=rtpmap:101 telephone-event/8000\r\na=fmtp:101 0-15\r\na=sendrecv\r\na=rtcp:59195\r\n",
+          "uri": "sip:9705454458@172.30.59.243:5060",
+          "body": "v=0\r\no=msc1 947016 480145 IN IP4 172.30.42.239\r\ns=sip call\r\nc=IN IP4 172.30.42.239\r\nt=0 0\r\nm=audio 59194 RTP/AVP 0 8 18 101\r\na=maxptime:20\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:18 G729/8000\r\na=fmtp:18 annexb=no\r\na=rtpmap:101 telephone-event/8000\r\na=fmtp:101 0-15\r\na=sendrecv\r\na=rtcp:59195\r\n",
+          "method": "INVITE",
+          "headers": {
+            "to": "<sip:+19705454458@192.168.250.45>",
+            "via": "SIP/2.0/UDP 44.229.228.186;rport=5060;branch=z9hG4bK7NBQ9UF1ZNjBF;received=172.31.57.86",
+            "cseq": "113234533 INVITE",
+            "from": "<sip:+491704600874@44.229.228.186:5060>;tag=cc1e7ZaSBm58e",
+            "X-CID": "799712142-3984565451-1998171247@msc1.382COM.COM",
+            "allow": "PUBLISH, MESSAGE, UPDATE, PRACK, SUBSCRIBE, REFER, INFO, NOTIFY, REGISTER, OPTIONS, BYE, INVITE, ACK, CANCEL",
+            "accept": "application/sdp",
+            "min-se": "600",
+            "call-id": "76aa4c0c-ad3b-123f-e7b2-0ec7040a32ad",
+            "contact": "<sip:172.31.57.86:5060>",
+            "privacy": "none",
+            "identity": "eyJhbGciOiJFUzI1NiIsInBwdCI6InNoYWtlbiIsInR5cCI6InBhc3Nwb3J0IiwieDV1IjoiaHR0cHM6Ly9jci5jY2lkLm5ldXN0YXIuYml6L2NjaWQvYXV0aG4vdjIvY2VydHMvMTExODQuMTExMDQucGVtIn0.eyJhdHRlc3QiOiJDIiwiZGVzdCI6eyJ0biI6WyIxOTcwNTQ1NDQ1OCJdfSwiaWF0IjoxNzc1NTc2NjUxLCJvcmlnIjp7InRuIjoiNDkxNzA0NjAwODc0In0sIm9yaWdpZCI6IjcwYzc4YTc0LWRhNzQtMTFlYi04ZDE5LTAyNDJhYzEzMDAwMyJ9.YAGEoBwftehqDmJqvCysobJTAOg932C-U4Ea2RoXHShZqerrC9ubsxkj7GbRluo0YFWpdP3JQUCEsPtInUO_Xg;info=<https://cr.ccid.neustar.biz/ccid/authn/v2/certs/11184.11104.pem>;alg=ES256;ppt=\"shaken\"",
+            "supported": "100rel, timer",
+            "content-type": "application/sdp",
+            "max-forwards": "70",
+            "X-Account-Sid": "c033b672-5b99-42ae-9ce2-b231e9a522fb",
+            "content-length": "306",
+            "X-Forwarded-For": "64.125.111.10",
+            "X-Application-Sid": "79d078c8-76b2-452a-99e0-ddd5abbf6269",
+            "X-Voip-Carrier-Sid": "a5569621-84ac-49cc-a8b8-11c7fb96b905",
+            "p-asserted-identity": "<sip:+491704600874@207.223.78.171:5060>",
+            "X-Originating-Carrier": "382com"
+          },
+          "payload": [
+            {
+              "type": "application/sdp",
+              "content": "v=0\r\no=msc1 947016 480145 IN IP4 172.30.42.239\r\ns=sip call\r\nc=IN IP4 172.30.42.239\r\nt=0 0\r\nm=audio 59194 RTP/AVP 0 8 18 101\r\na=maxptime:20\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:18 G729/8000\r\na=fmtp:18 annexb=no\r\na=rtpmap:101 telephone-event/8000\r\na=fmtp:101 0-15\r\na=sendrecv\r\na=rtcp:59195\r\n"
+            }
+          ],
+          "version": "2.0"
+        },
+        "sbcCallId": "799712142-3984565451-1998171247@msc1.382COM.COM"
+      },
+      "status": "ringing",
+      "assistantId": "696456cd-bdd2-4957-8c29-b9133946b06a",
+      "assistantOverrides": {
+        "variableValues": {
+          "cid": "799712142-3984565451-1998171247@msc1.382COM.COM",
+          "account-sid": "c033b672-5b99-42ae-9ce2-b231e9a522fb",
+          "forwarded-for": "64.125.111.10",
+          "application-sid": "79d078c8-76b2-452a-99e0-ddd5abbf6269",
+          "voip-carrier-sid": "a5569621-84ac-49cc-a8b8-11c7fb96b905",
+          "originating-carrier": "382com"
+        }
+      },
+      "phoneNumberId": "8df2bae4-afaf-405a-a7c6-3aa496bfe37b",
+      "customer": {
+        "number": "+491704600874",
+        "sipUri": "sip:+491704600874@44.229.228.186:5060"
+      }
+    },
+    "phoneNumber": {
+      "id": "8df2bae4-afaf-405a-a7c6-3aa496bfe37b",
+      "orgId": "2e3874d1-0989-45dd-a3b5-45f1f3008091",
+      "assistantId": "696456cd-bdd2-4957-8c29-b9133946b06a",
+      "number": "+19705454458",
+      "createdAt": "2026-04-04T19:59:11.335Z",
+      "updatedAt": "2026-04-07T15:03:41.143Z",
+      "provider": "vapi",
+      "server": {
+        "url": "https://supersensitive-rae-multinominal.ngrok-free.dev/api/v1/voice/providers/vapi/webhook",
+        "timeoutSeconds": 20
+      },
+      "status": "active",
+      "providerResourceId": "d60613d8-7023-4c69-8716-6db2230daf01"
+    },
+    "customer": {
+      "number": "+491704600874",
+      "sipUri": "sip:+491704600874@44.229.228.186:5060"
+    },
+    "assistant": {
+      "id": "696456cd-bdd2-4957-8c29-b9133946b06a",
+      "orgId": "2e3874d1-0989-45dd-a3b5-45f1f3008091",
+      "name": "Intent Router (DE)",
+      "voice": {
+        "model": "eleven_turbo_v2_5",
+        "voiceId": "FUfBrNit0NNZAwb58KWH",
+        "language": "de",
+        "provider": "11labs",
+        "stability": 0.5,
+        "similarityBoost": 0.75
+      },
+      "createdAt": "2026-04-04T19:43:29.197Z",
+      "updatedAt": "2026-04-04T21:18:55.105Z",
+      "model": {
+        "model": "claude-haiku-4-5-20251001",
+        "messages": [
+          {
+            "role": "system",
+            "content": "Du bist ein professioneller, ruhiger Telefon-Agent für eine Multi-Tenant-Voice-Plattform. Du sprichst Deutsch.\n\nZiel\n- Nimm eingehende Anrufe von Kunden/Endnutzern an.\n- Erkenne schnell die Absicht (Intent) und steuere den passenden Ablauf über Backend-Tools.\n- Es gibt zwei Haupt-Tracks: (1) Buchung, (2) Restaurantbestellung.\n- Du implementierst KEINE Business-Logik selbst. Entscheidungen, Zustand (State), Validierungen, Preise, Verfügbarkeit, Warenkorb/Order-State etc. kommen aus dem Backend über Tools.\n\nAllgemeine Gesprächsregeln\n- Halte Antworten kurz, präzise und serviceorientiert.\n- Stelle immer nur die nötigsten Rückfragen, um das nächste Tool ausführen zu können.\n- Wenn etwas unklar ist (Datum/Uhrzeit/Personenzahl/Restaurant/Artikel/Menge/Adresse), frage gezielt nach.\n- Bestätige wichtige Details (Datum/Uhrzeit, Name, Telefonnummer, Bestellpositionen) bevor du final buchst/bestätigst.\n- Wenn das Backend einen Fehler/kein Ergebnis liefert: entschuldige dich kurz, biete Alternativen an (erneut versuchen, Rückrufanfrage erstellen).\n- Wenn der Nutzer ausdrücklich einen Rückruf wünscht oder du nicht weiterkommst: erstelle eine Rückrufanfrage über das Backend.\n\nIntent-Routing\n- Wenn der Nutzer Wörter wie „buchen“, „Termin“, „Reservierung“, „verfügbar“, „umbuchen“, „stornieren“ sagt → Track BUCHUNG.\n- Wenn der Nutzer Wörter wie „bestellen“, „Lieferung“, „Abholung“, „Menü“, „Pizza“, „Burger“, „Gericht“, „Warenkorb“ sagt → Track RESTAURANT.\n- Falls unklar: stelle eine kurze Klärungsfrage: „Geht es um eine Buchung oder eine Bestellung?“\n\nTrack BUCHUNG\n- Aufgaben: Verfügbarkeit prüfen, buchen, buchungsbezogene Fragen beantworten, bei Bedarf Rückrufanfrage erstellen.\n- Sammle die minimalen Parameter, die das Backend braucht (z. B. Datum, Uhrzeitfenster, Service/Standort, Personenzahl, Name, Kontakt).\n- Nutze Backend-Tools für: availability check, booking create/update/cancel, booking FAQ/lookup, callback request.\n\nTrack RESTAURANT\n- Aufgaben: Menüfragen beantworten, Menüpunkte suchen, Bestellung anlegen/aktualisieren, Bestellung bestätigen, bei Bedarf Rückrufanfrage erstellen.\n- Sammle minimale Parameter (Restaurant/Standort, Liefer-/Abholart, Adresse falls Lieferung, Artikel + Mengen + Optionen, Kontakt).\n- Nutze Backend-Tools für: menu Q&A, item search, order create/update, order confirm, callback request.\n\nTool-Nutzung\n- Verlasse dich auf Tool-Antworten als Quelle der Wahrheit.\n- Gib Tool-Ergebnisse strukturiert und verständlich wieder.\n- Keine erfundenen Menüs, Preise, Verfügbarkeiten oder Bestätigungen ohne Tool-Result.\n\nSicherheit/Datenschutz\n- Bitte nur um notwendige Daten.\n- Wiederhole sensible Daten nur, wenn nötig zur Bestätigung."
+          }
+        ],
+        "provider": "anthropic",
+        "maxTokens": 250
+      },
+      "firstMessage": "Hallo! Wie kann ich Ihnen helfen — geht es um eine Buchung oder um eine Restaurantbestellung?",
+      "transcriber": {
+        "model": "nova-3",
+        "language": "de",
+        "provider": "deepgram"
+      },
+      "startSpeakingPlan": {
+        "waitSeconds": 0.4,
+        "transcriptionEndpointingPlan": {
+          "onNumberSeconds": 0.5,
+          "onPunctuationSeconds": 0.1,
+          "onNoPunctuationSeconds": 1.5
+        }
+      },
+      "stopSpeakingPlan": {
+        "numWords": 0,
+        "voiceSeconds": 0.2,
+        "backoffSeconds": 1
+      },
+      "variableValues": {
+        "cid": "799712142-3984565451-1998171247@msc1.382COM.COM",
+        "account-sid": "c033b672-5b99-42ae-9ce2-b231e9a522fb",
+        "forwarded-for": "64.125.111.10",
+        "application-sid": "79d078c8-76b2-452a-99e0-ddd5abbf6269",
+        "voip-carrier-sid": "a5569621-84ac-49cc-a8b8-11c7fb96b905",
+        "originating-carrier": "382com"
+      }
+    }
+  }
+}

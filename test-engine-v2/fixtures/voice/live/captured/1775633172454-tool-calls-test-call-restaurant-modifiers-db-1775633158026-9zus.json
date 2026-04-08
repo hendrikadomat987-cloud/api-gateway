@@ -1,0 +1,31 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-modifiers-db-1775633158026-9zus",
+      "createdAt": "2026-04-08T07:26:12.451Z",
+      "updatedAt": "2026-04-08T07:26:12.451Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T07:26:12.451Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775633172451-000002",
+        "type": "function",
+        "function": {
+          "name": "add_order_item",
+          "arguments": {
+            "item_id": "pizza_salami",
+            "quantity": 1,
+            "modifiers": [
+              {
+                "type": "remove",
+                "name": "Käse"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

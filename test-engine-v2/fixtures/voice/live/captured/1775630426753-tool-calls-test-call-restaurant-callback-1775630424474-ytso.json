@@ -1,0 +1,24 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-callback-1775630424474-ytso",
+      "createdAt": "2026-04-08T06:40:26.748Z",
+      "updatedAt": "2026-04-08T06:40:26.748Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:40:26.748Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630426748-000001",
+        "type": "function",
+        "function": {
+          "name": "create_restaurant_callback_request",
+          "arguments": {
+            "notes": "Tisch für 4 Personen gewünscht"
+          }
+        }
+      }
+    ]
+  }
+}

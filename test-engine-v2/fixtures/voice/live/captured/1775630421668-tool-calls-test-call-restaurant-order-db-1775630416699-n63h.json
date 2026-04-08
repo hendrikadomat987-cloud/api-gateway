@@ -1,0 +1,22 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "test-call-restaurant-order-db-1775630416699-n63h",
+      "createdAt": "2026-04-08T06:40:21.665Z",
+      "updatedAt": "2026-04-08T06:40:21.665Z",
+      "assistantId": "test-restaurant-assistant-001"
+    },
+    "timestamp": "2026-04-08T06:40:21.665Z",
+    "toolCallList": [
+      {
+        "id": "tc-1775630421665-000003",
+        "type": "function",
+        "function": {
+          "name": "confirm_order",
+          "arguments": {}
+        }
+      }
+    ]
+  }
+}

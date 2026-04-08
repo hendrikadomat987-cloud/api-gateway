@@ -1,0 +1,37 @@
+{
+  "_fixture_meta": {
+    "purpose": "Placeholder for a real Vapi status-update webhook payload.",
+    "replace": [
+      "message.call.id          → real provider_call_id from a live call",
+      "message.call.assistantId → real VAPI assistantId matching a seeded voice_agent row",
+      "message.call.orgId       → real Vapi organisation ID",
+      "message.call.phoneNumberId → real Vapi phone number ID",
+      "message.call.customer.number → real caller phone number"
+    ],
+    "factory_delta": [
+      "call.orgId        — NOT present in factory buildVapiStatusUpdate; real payloads include it",
+      "call.type         — NOT present in factory; real payloads carry 'inboundPhoneCall' etc.",
+      "call.status       — NOT present in factory call sub-object; appears as separate message.status",
+      "call.phoneNumberId — NOT present in factory; real payloads reference the Vapi phone resource",
+      "call.customer     — NOT present in factory; real inbound calls carry caller number here"
+    ]
+  },
+  "message": {
+    "type": "status-update",
+    "status": "in-progress",
+    "call": {
+      "id": "REPLACE_WITH_REAL_CALL_ID",
+      "orgId": "REPLACE_WITH_REAL_ORG_ID",
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:01.000Z",
+      "type": "inboundPhoneCall",
+      "status": "in-progress",
+      "assistantId": "REPLACE_WITH_REAL_ASSISTANT_ID",
+      "phoneNumberId": "REPLACE_WITH_REAL_PHONE_NUMBER_ID",
+      "customer": {
+        "number": "+49123456789"
+      }
+    },
+    "timestamp": "2024-01-15T10:00:01.000Z"
+  }
+}
