@@ -5,6 +5,7 @@ import { parseModifierInputs, resolveModifiers } from './resolve-modifiers.js';
 import {
   findOrderContextBySessionId,
   upsertOrderContext,
+  updateOrderContextJson,
 } from '../../repositories/voice-order-contexts.repository.js';
 import { updateRestaurantOrderItem, updateOrderTotals } from '../../repositories/restaurant-order.repository.js';
 import { findMenuItemById } from '../../repositories/restaurant-menu.repository.js';
@@ -14,7 +15,7 @@ import {
   isUuid,
   type ContextItem,
 } from './reference-resolver.js';
-import { guardDraftState, validateQuantity } from './order-guards.js';
+import { guardDraftState, guardExpiredDraft, validateQuantity } from './order-guards.js';
 
 /**
  * update_order_item
@@ -68,6 +69,8 @@ async function _doUpdateItem(
   // Guard: block mutations on confirmed/terminal orders
   const stateErr = guardDraftState(ctx);
   if (stateErr) return stateErr;
+  const expiredErr = guardExpiredDraft(ctx);
+  if (expiredErr) return expiredErr;
 
   const json    = ctx.order_context_json as Record<string, unknown>;
   const orderId = json.restaurant_order_id as string;
@@ -146,16 +149,24 @@ async function _doUpdateItem(
     });
   }
 
-  // ── Persist context with enrichment ────────────────────────────────────
+  // ── Persist context with enrichment (optimistic locking) ────────────────
 
-  await upsertOrderContext(
-    context.tenantId, context.call.id, context.session.id,
-    {
-      ...json,
-      items,
-      last_updated_item_id: existing.order_item_id ?? existing.item_id,
-    },
+  const newJson = {
+    ...json,
+    items,
+    last_updated_item_id: existing.order_item_id ?? existing.item_id,
+  };
+
+  const lockResult = await updateOrderContextJson(
+    context.tenantId, context.session.id, newJson, ctx.updated_at,
   );
+  if (lockResult === 'conflict') {
+    return {
+      success: false,
+      error:   'concurrent_modification',
+      message: 'The order was modified by another request. Please retry.',
+    };
+  }
 
   return {
     success:        true,

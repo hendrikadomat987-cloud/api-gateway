@@ -6,7 +6,7 @@ import {
   findOrderContextBySessionId,
   upsertOrderContext,
 } from '../../repositories/voice-order-contexts.repository.js';
-import { validateDeliveryType } from './order-guards.js';
+import { validateDeliveryType, isDraftExpired } from './order-guards.js';
 
 /**
  * create_order
@@ -41,8 +41,8 @@ export async function runCreateOrder(
 
   const existing = await findOrderContextBySessionId(context.tenantId, context.session.id);
 
-  if (existing && existing.status === 'draft') {
-    // Active draft exists — return it without overwriting items
+  if (existing && existing.status === 'draft' && !isDraftExpired(existing)) {
+    // Active, non-expired draft exists — return it without overwriting items
     const json    = existing.order_context_json as Record<string, unknown>;
     const orderId = json.restaurant_order_id as string | undefined;
     return {

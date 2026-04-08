@@ -4,6 +4,7 @@ import type { VoiceContext } from '../../../../types/voice.js';
 import {
   findOrderContextBySessionId,
   upsertOrderContext,
+  updateOrderContextJson,
 } from '../../repositories/voice-order-contexts.repository.js';
 import {
   deleteRestaurantOrderItem,
@@ -11,7 +12,7 @@ import {
 } from '../../repositories/restaurant-order.repository.js';
 import { calculateTotals } from './order-rules.js';
 import { resolveItemReference, isUuid, type ContextItem } from './reference-resolver.js';
-import { guardDraftState, validateItemRef } from './order-guards.js';
+import { guardDraftState, guardExpiredDraft, validateItemRef } from './order-guards.js';
 
 /**
  * remove_order_item
@@ -42,6 +43,8 @@ export async function runRemoveOrderItem(
   // Guard: block mutations on confirmed/terminal orders
   const stateErr = guardDraftState(ctx);
   if (stateErr) return stateErr;
+  const expiredErr = guardExpiredDraft(ctx);
+  if (expiredErr) return expiredErr;
 
   const json    = ctx.order_context_json as Record<string, unknown>;
   const orderId = json.restaurant_order_id as string;
@@ -98,10 +101,18 @@ export async function runRemoveOrderItem(
     });
   }
 
-  await upsertOrderContext(
-    context.tenantId, context.call.id, context.session.id,
+  const lockResult = await updateOrderContextJson(
+    context.tenantId, context.session.id,
     { ...json, items: updatedItems },
+    ctx.updated_at,
   );
+  if (lockResult === 'conflict') {
+    return {
+      success: false,
+      error:   'concurrent_modification',
+      message: 'The order was modified by another request. Please retry.',
+    };
+  }
 
   return {
     success:        true,

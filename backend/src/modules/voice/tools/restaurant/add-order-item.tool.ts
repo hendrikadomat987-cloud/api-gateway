@@ -5,6 +5,7 @@ import { parseModifierInputs, resolveModifiers } from './resolve-modifiers.js';
 import {
   findOrderContextBySessionId,
   upsertOrderContext,
+  updateOrderContextJson,
 } from '../../repositories/voice-order-contexts.repository.js';
 import {
   createRestaurantOrder,
@@ -18,7 +19,10 @@ import {
   isNochmalRef,
   type ContextItem,
 } from './reference-resolver.js';
-import { guardDraftState, validateQuantity } from './order-guards.js';
+import { guardDraftState, guardExpiredDraft, validateQuantity } from './order-guards.js';
+
+/** Dedup window: if the same item+quantity is added within this many seconds, block it. */
+const DEDUP_WINDOW_SECONDS = 30;
 
 // ── Tool entry point ──────────────────────────────────────────────────────────
 
@@ -71,6 +75,7 @@ async function _doAddItem(
   itemId: string,
   quantity: number,
   modifiers: OrderItemModifier[],
+  skipDedup = false,
 ): Promise<unknown> {
   // 1. Get or auto-create order context
   let ctx = await findOrderContextBySessionId(context.tenantId, context.session.id);
@@ -79,6 +84,8 @@ async function _doAddItem(
   if (ctx) {
     const stateErr = guardDraftState(ctx);
     if (stateErr) return stateErr;
+    const expiredErr = guardExpiredDraft(ctx);
+    if (expiredErr) return expiredErr;
   }
 
   let orderId: string;
@@ -99,6 +106,23 @@ async function _doAddItem(
     items   = (json.items as ContextItem[] | undefined) ?? [];
   }
 
+  // 2a. Dedup fingerprint check — block identical add within DEDUP_WINDOW_SECONDS
+  // Skipped for nochmal repeats (intentional re-add of the same item).
+  if (!skipDedup && ctx && isUuid(itemId)) {
+    const json = ctx.order_context_json as Record<string, unknown>;
+    const fp   = json.last_add_fingerprint as { item_id: string; quantity: number; ts: string } | undefined;
+    if (fp && fp.item_id === itemId && fp.quantity === quantity) {
+      const ageSec = (Date.now() - new Date(fp.ts).getTime()) / 1000;
+      if (ageSec < DEDUP_WINDOW_SECONDS) {
+        return {
+          success: false,
+          error:   'duplicate_action_blocked',
+          message: `The same item was just added ${Math.round(ageSec)}s ago. Please wait before adding again.`,
+        };
+      }
+    }
+  }
+
   // 2. Handle "nochmal" — clone last context item as a new line
   if (isNochmalRef(itemId)) {
     if (items.length === 0) {
@@ -110,6 +134,7 @@ async function _doAddItem(
       last.menu_item_id ?? last.item_id,
       1,                // always quantity 1 per repeat
       last.modifiers,   // copy modifiers from original
+      true,             // skip dedup — intentional repeat
     );
   }
 
@@ -161,15 +186,33 @@ async function _doAddItem(
     });
   }
 
-  // 8. Persist updated context with enrichment fields
-  await upsertOrderContext(
-    context.tenantId, context.call.id, context.session.id,
-    {
-      ...(ctx.order_context_json as Record<string, unknown>),
-      items:               updatedItems,
-      last_added_item_id:  orderItemId ?? itemId,
-    },
-  );
+  // 8. Persist updated context with enrichment fields (optimistic locking for existing rows)
+  const newJson = {
+    ...(ctx.order_context_json as Record<string, unknown>),
+    items:                updatedItems,
+    last_added_item_id:   orderItemId ?? itemId,
+    last_add_fingerprint: isUuid(itemId)
+      ? { item_id: itemId, quantity, ts: new Date().toISOString() }
+      : undefined,
+  };
+
+  if (ctx.updated_at) {
+    // Existing row — use optimistic locking to prevent lost updates
+    const lockResult = await updateOrderContextJson(
+      context.tenantId, context.session.id, newJson, ctx.updated_at,
+    );
+    if (lockResult === 'conflict') {
+      return {
+        success: false,
+        error:   'concurrent_modification',
+        message: 'The order was modified by another request. Please retry.',
+      };
+    }
+  } else {
+    await upsertOrderContext(
+      context.tenantId, context.call.id, context.session.id, newJson,
+    );
+  }
 
   return {
     success:        true,

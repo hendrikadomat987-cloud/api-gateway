@@ -85,3 +85,31 @@ export function validateItemRef(raw: unknown): OrderError | null {
   }
   return null;
 }
+
+// ── Draft TTL ─────────────────────────────────────────────────────────────────
+
+/** A draft order that has not been touched for this many minutes is considered expired. */
+export const DRAFT_TTL_MINUTES = 60;
+
+/**
+ * Returns true when the draft order context has not been updated within DRAFT_TTL_MINUTES.
+ * Always returns false for non-draft contexts (terminal states handle themselves).
+ */
+export function isDraftExpired(ctx: VoiceOrderContext): boolean {
+  if (ctx.status !== 'draft') return false;
+  const updatedAt = new Date(ctx.updated_at).getTime();
+  const ageMs     = Date.now() - updatedAt;
+  return ageMs > DRAFT_TTL_MINUTES * 60 * 1000;
+}
+
+/**
+ * Returns an error response when the draft context has expired, null otherwise.
+ * Call this in mutation tools after guardDraftState.
+ */
+export function guardExpiredDraft(ctx: VoiceOrderContext): OrderError | null {
+  if (!isDraftExpired(ctx)) return null;
+  return err(
+    'order_context_expired',
+    `The order session has expired after ${DRAFT_TTL_MINUTES} minutes of inactivity. Please start a new order.`,
+  );
+}

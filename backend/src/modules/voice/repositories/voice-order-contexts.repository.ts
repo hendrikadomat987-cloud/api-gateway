@@ -47,6 +47,37 @@ export async function upsertOrderContext(
 }
 
 /**
+ * Conditionally updates order_context_json using optimistic locking.
+ *
+ * Only applies the update when `updated_at` still matches `expectedUpdatedAt`.
+ * This prevents lost updates when two concurrent requests both read the same
+ * snapshot and try to write back different modifications.
+ *
+ * Returns:
+ *   'ok'       — row was updated successfully
+ *   'conflict' — updated_at had already changed (another write raced ahead)
+ */
+export async function updateOrderContextJson(
+  tenantId: string,
+  voiceSessionId: string,
+  newJson: Record<string, unknown>,
+  expectedUpdatedAt: string,
+): Promise<'ok' | 'conflict'> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query(
+      `UPDATE voice_order_contexts
+       SET    order_context_json = $3,
+              updated_at         = now()
+       WHERE  tenant_id          = $1
+         AND  voice_session_id   = $2
+         AND  date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $4::timestamptz)`,
+      [tenantId, voiceSessionId, JSON.stringify(newJson), expectedUpdatedAt],
+    );
+    return (result.rowCount ?? 0) > 0 ? 'ok' : 'conflict';
+  });
+}
+
+/**
  * Sets the voice_order_contexts row to 'confirmed' and stamps confirmed_at.
  */
 export async function confirmOrderContext(
