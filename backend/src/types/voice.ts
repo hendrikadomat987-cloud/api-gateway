@@ -234,6 +234,28 @@ export interface VoiceCallbackRequest {
   updated_at: string;
 }
 
+// ── Restaurant menu ───────────────────────────────────────────────────────────
+
+export interface RestaurantMenuCategory {
+  id: string;
+  tenant_id: string;
+  name: string;
+  position: number;
+  created_at: string;
+}
+
+export interface RestaurantMenuItem {
+  id: string;
+  tenant_id: string;
+  category_id: string;
+  name: string;
+  description?: string;
+  price_cents: number;
+  prep_time_seconds?: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 // ── Runtime context ───────────────────────────────────────────────────────────
 
 /** Resolved per-request context after tenant resolution. Never trust from payload. */

@@ -95,11 +95,12 @@ describe('voice / restaurant / search', () => {
     expect(typeof firstItem.price).toBe('number');
     expect(typeof firstItem.category).toBe('string');
 
-    // At least one salami item must be present in the static stub results
+    // At least one salami item must be present (robust against UUIDs and full item names)
     const salamiItem = toolResult.items.find(
-      (i) => i.id === 'pizza_salame' || i.name === 'Salami',
+      (i) => i.name?.toLowerCase().includes('salami'),
     );
     expect(salamiItem).toBeDefined();
+    expect(salamiItem.price).toBe(9.8);
   });
 
   // ── Step 2: call and session exist ────────────────────────────────────────

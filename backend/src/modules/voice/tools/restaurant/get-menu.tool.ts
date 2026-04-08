@@ -1,34 +1,23 @@
 // src/modules/voice/tools/restaurant/get-menu.tool.ts
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { VoiceContext } from '../../../../types/voice.js';
+import { getMenuByTenant } from '../../repositories/restaurant-menu.repository.js';
 
 /**
  * get_menu
  *
- * Returns the full menu for the tenant's restaurant.
- * V1 stub — returns static deterministic menu data.
+ * Returns the full active menu for the tenant's restaurant from the DB.
+ * Categories and items are ordered by sort_order.
  */
 export async function runGetMenu(
-  _context: VoiceContext,
+  context: VoiceContext,
   _args: Record<string, unknown>,
 ): Promise<unknown> {
+  const categories = await getMenuByTenant(context.tenantId);
+
   return {
-    success: true,
-    categories: [
-      {
-        name: 'Pizza',
-        items: [
-          { id: 'pizza_margherita', name: 'Margherita', price: 8.5 },
-          { id: 'pizza_salame',     name: 'Salami',     price: 9.5 },
-        ],
-      },
-      {
-        name: 'Drinks',
-        items: [
-          { id: 'cola', name: 'Cola', price: 2.5 },
-        ],
-      },
-    ],
+    success:    true,
+    categories,
   };
 }
 

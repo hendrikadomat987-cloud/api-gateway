@@ -1,25 +1,38 @@
 // src/modules/voice/tools/restaurant/search-menu-item.tool.ts
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { VoiceContext } from '../../../../types/voice.js';
+import { searchMenuItems } from '../../repositories/restaurant-menu.repository.js';
 
 /**
  * search_menu_item
  *
- * Searches the menu for items matching a caller's query.
- *
- * TODO: Implement menu search integration.
+ * Searches the tenant's active menu for items matching a caller's query.
+ * Case-insensitive match on name and description.
+ * Returns an empty items array when nothing matches — never fabricates results.
  */
 export async function runSearchMenuItem(
-  _context: VoiceContext,
-  _args: Record<string, unknown>,
+  context: VoiceContext,
+  args: Record<string, unknown>,
 ): Promise<unknown> {
+  const query = typeof args?.query === 'string' && args.query.trim().length > 0
+    ? args.query.trim()
+    : '';
+
+  if (!query) {
+    return {
+      success: false,
+      query,
+      error:   'query argument is required',
+      items:   [],
+    };
+  }
+
+  const items = await searchMenuItems(context.tenantId, query);
+
   return {
     success: true,
-    query:   typeof _args?.query === 'string' ? _args.query : 'pizza',
-    items: [
-      { id: 'pizza_margherita', name: 'Margherita', price: 8.5,  category: 'Pizza' },
-      { id: 'pizza_salame',     name: 'Salami',     price: 9.5,  category: 'Pizza' },
-    ],
+    query,
+    items,
   };
 }
 
