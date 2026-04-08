@@ -73,6 +73,7 @@ export async function createToolInvocation(
         voice_call_id,
         voice_session_id,
         tool_name,
+        track_type,
         request_payload_json,
         response_payload_json,
         status,
@@ -81,7 +82,7 @@ export async function createToolInvocation(
         finished_at
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
       )
       RETURNING *
       `,
@@ -90,6 +91,7 @@ export async function createToolInvocation(
         data.voice_call_id,
         data.voice_session_id,
         data.tool_name,
+        data.track_type,
         data.request_payload_json ?? null,
         data.response_payload_json ?? null,
         data.status,

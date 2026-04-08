@@ -11,6 +11,18 @@ import { runBookAppointment } from '../tools/booking/book-appointment.tool.js';
 import { runAnswerBookingQuestion } from '../tools/booking/answer-booking-question.tool.js';
 import { runCreateCallbackRequest } from '../tools/booking/create-callback-request.tool.js';
 
+// ── Salon tools ───────────────────────────────────────────────────────────────
+
+import { runGetServices }            from '../tools/salon/get-services.tool.js';
+import { runSearchService }          from '../tools/salon/search-service.tool.js';
+import { runCreateBooking }          from '../tools/salon/create-booking.tool.js';
+import { runAddBookingService }      from '../tools/salon/add-booking-service.tool.js';
+import { runUpdateBookingService }   from '../tools/salon/update-booking-service.tool.js';
+import { runRemoveBookingService }   from '../tools/salon/remove-booking-service.tool.js';
+import { runConfirmBooking }         from '../tools/salon/confirm-booking.tool.js';
+import { runGetBookingSummary }      from '../tools/salon/get-booking-summary.tool.js';
+import { runAnswerBookingQuestion as runAnswerSalonQuestion } from '../tools/salon/answer-booking-question.tool.js';
+
 // ── Restaurant tools ──────────────────────────────────────────────────────────
 
 import { runGetMenu } from '../tools/restaurant/get-menu.tool.js';
@@ -49,9 +61,22 @@ const RESTAURANT_TOOLS: Record<string, ToolHandler> = {
   create_restaurant_callback_request: runCreateRestaurantCallbackRequest,
 };
 
+const SALON_TOOLS: Record<string, ToolHandler> = {
+  get_services:           runGetServices,
+  search_service:         runSearchService,
+  create_booking:         runCreateBooking,
+  add_booking_service:    runAddBookingService,
+  update_booking_service: runUpdateBookingService,
+  remove_booking_service: runRemoveBookingService,
+  confirm_booking:        runConfirmBooking,
+  get_booking_summary:    runGetBookingSummary,
+  answer_booking_question: runAnswerSalonQuestion,
+};
+
 const TOOL_REGISTRY: Record<string, Record<string, ToolHandler>> = {
-  booking: BOOKING_TOOLS,
+  booking:    BOOKING_TOOLS,
   restaurant: RESTAURANT_TOOLS,
+  salon:      SALON_TOOLS,
 };
 
 // ── Public dispatch ───────────────────────────────────────────────────────────

@@ -45,7 +45,7 @@ export async function getOrCreateCallAndSession(opts: {
       status: 'created',
       // Derive track_type from agent.track_scope; fall back to 'unknown' if multi/unset
       track_type:
-        agent.track_scope === 'booking' || agent.track_scope === 'restaurant'
+        agent.track_scope === 'booking' || agent.track_scope === 'restaurant' || agent.track_scope === 'salon'
           ? agent.track_scope
           : 'unknown',
     });
@@ -60,7 +60,7 @@ export async function getOrCreateCallAndSession(opts: {
 
   if (!session) {
     const trackType =
-      agent.track_scope === 'booking' || agent.track_scope === 'restaurant'
+      agent.track_scope === 'booking' || agent.track_scope === 'restaurant' || agent.track_scope === 'salon'
         ? agent.track_scope
         : null;
 

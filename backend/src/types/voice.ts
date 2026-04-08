@@ -24,7 +24,7 @@ export type VoiceCallStatus =
   | 'fallback'
   | 'handover';
 
-export type VoiceTrackType = 'booking' | 'restaurant' | 'unknown';
+export type VoiceTrackType = 'booking' | 'restaurant' | 'salon' | 'unknown';
 
 // ── Session ───────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ export type VoiceSessionStatus =
   | 'cancelled'
   | 'failed';
 
-export type VoiceSessionTrackType = 'booking' | 'restaurant';
+export type VoiceSessionTrackType = 'booking' | 'restaurant' | 'salon';
 
 // ── Events / Tools / Order ────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export type KnownVoiceEventType =
 // ── Runtime track shorthand ───────────────────────────────────────────────────
 
 /** Validated V1 track — never includes 'unknown'. Used in the runtime context. */
-export type VoiceTrack = 'booking' | 'restaurant';
+export type VoiceTrack = 'booking' | 'restaurant' | 'salon';
 
 // ── Core domain objects (aligned with DB schema) ──────────────────────────────
 
