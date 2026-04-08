@@ -6,8 +6,9 @@ import {
   findOrderContextBySessionId,
   upsertOrderContext,
 } from '../../repositories/voice-order-contexts.repository.js';
-import { updateRestaurantOrderItem } from '../../repositories/restaurant-order.repository.js';
+import { updateRestaurantOrderItem, updateOrderTotals } from '../../repositories/restaurant-order.repository.js';
 import { findMenuItemById } from '../../repositories/restaurant-menu.repository.js';
+import { calculateTotals } from './order-rules.js';
 
 interface ContextItem {
   order_item_id: string | null;
@@ -106,17 +107,31 @@ async function _doUpdateItem(
     existing.line_total = existing.unit_price * existing.quantity;
   }
 
-  // 5. Write updated context
+  // 5. Recalculate order totals
   items[idx] = existing;
+  const totals = calculateTotals(items, 0); // delivery fee applied at confirm
+
+  // Persist totals to restaurant_orders when we have a real order
+  if (orderId && existing.order_item_id) {
+    await updateOrderTotals(context.tenantId, orderId, {
+      subtotalCents:    totals.subtotal_cents,
+      deliveryFeeCents: 0,
+      totalCents:       totals.subtotal_cents,
+    });
+  }
+
+  // 6. Write updated context
   await upsertOrderContext(
     context.tenantId, context.call.id, context.session.id,
     { ...json, items },
   );
 
   return {
-    success:  true,
-    order_id: orderId,
-    status:   'item_updated',
+    success:        true,
+    order_id:       orderId,
+    status:         'item_updated',
+    subtotal_cents: totals.subtotal_cents,
+    total_cents:    totals.subtotal_cents,
     item: {
       id:          existing.order_item_id ?? existing.item_id,
       menu_item_id: existing.menu_item_id,

@@ -22,20 +22,53 @@ interface OrderItemRow {
  */
 export async function createRestaurantOrder(
   tenantId: string,
-  data: { source?: 'voice' | 'web' | 'app'; status?: string; totalCents?: number },
+  data: {
+    source?:              'voice' | 'web' | 'app';
+    status?:              string;
+    totalCents?:          number;
+    deliveryType?:        'pickup' | 'delivery';
+    customerPostalCode?:  string | null;
+    customerName?:        string | null;
+  },
 ): Promise<string> {
-  const source     = data.source     ?? 'voice';
-  const status     = data.status     ?? 'draft';
-  const totalCents = data.totalCents ?? 0;
+  const source      = data.source      ?? 'voice';
+  const status      = data.status      ?? 'draft';
+  const totalCents  = data.totalCents  ?? 0;
+  const deliveryType = data.deliveryType ?? 'pickup';
 
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO restaurant_orders (tenant_id, status, total_cents, source)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO restaurant_orders
+       (tenant_id, status, total_cents, source,
+        delivery_type, customer_postal_code, customer_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id`,
-    [tenantId, status, totalCents, source],
+    [
+      tenantId, status, totalCents, source,
+      deliveryType, data.customerPostalCode ?? null, data.customerName ?? null,
+    ],
   );
 
   return result.rows[0].id;
+}
+
+/**
+ * Updates the running totals (subtotal, delivery fee, grand total) on an order.
+ */
+export async function updateOrderTotals(
+  tenantId: string,
+  orderId: string,
+  data: {
+    subtotalCents:    number;
+    deliveryFeeCents: number;
+    totalCents:       number;
+  },
+): Promise<void> {
+  await pool.query(
+    `UPDATE restaurant_orders
+     SET subtotal_cents = $3, delivery_fee_cents = $4, total_cents = $5
+     WHERE tenant_id = $1 AND id = $2`,
+    [tenantId, orderId, data.subtotalCents, data.deliveryFeeCents, data.totalCents],
+  );
 }
 
 /**

@@ -6,8 +6,9 @@ import {
   findOrderContextBySessionId,
   upsertOrderContext,
 } from '../../repositories/voice-order-contexts.repository.js';
-import { createRestaurantOrder, addRestaurantOrderItem } from '../../repositories/restaurant-order.repository.js';
+import { createRestaurantOrder, addRestaurantOrderItem, updateOrderTotals } from '../../repositories/restaurant-order.repository.js';
 import { findMenuItemById } from '../../repositories/restaurant-menu.repository.js';
+import { calculateTotals } from './order-rules.js';
 
 // ── Local type for items stored in order_context_json ─────────────────────────
 
@@ -124,19 +125,34 @@ async function _doAddItem(
     line_total:    lineTotalCents / 100,
   };
 
+  const updatedItems = [...items, newItem];
+
+  // 6. Recalculate order totals and persist to restaurant_orders
+  const totals = calculateTotals(updatedItems, 0); // delivery fee applied at confirm
+  if (menuItem) {
+    // Only update DB totals when we have a real order with DB items
+    await updateOrderTotals(context.tenantId, orderId, {
+      subtotalCents:    totals.subtotal_cents,
+      deliveryFeeCents: 0,
+      totalCents:       totals.subtotal_cents,
+    });
+  }
+
   await upsertOrderContext(
     context.tenantId, context.call.id, context.session.id,
     {
       ...(ctx.order_context_json as Record<string, unknown>),
-      items: [...items, newItem],
+      items: updatedItems,
     },
   );
 
-  // 6. Return
+  // 7. Return
   return {
-    success:  true,
-    order_id: orderId,
-    status:   'item_added',
+    success:       true,
+    order_id:      orderId,
+    status:        'item_added',
+    subtotal_cents: totals.subtotal_cents,
+    total_cents:    totals.subtotal_cents,
     item: {
       id:          orderItemId ?? itemId,
       menu_item_id: menuItem?.id ?? null,
