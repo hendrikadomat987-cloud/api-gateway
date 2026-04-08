@@ -56,13 +56,23 @@ export async function runCheckAvailability(
     throw new Error(`check_availability: n8n webhook returned HTTP ${response.status}`);
   }
 
-  const body = await response.json() as { success: boolean; data: { bookable: boolean; reason: string | null } };
+  const body = await response.json() as {
+    success: boolean;
+    data?: { bookable: boolean; reason: string | null };
+    error?: { code: string; message: string };
+  };
 
   if (!body.success) {
-    throw new Error('check_availability: n8n webhook returned unsuccessful response');
+    // AE returned a structured error (e.g. DB_ERROR, VALIDATION_ERROR) — surface to voice gracefully
+    return {
+      success: false,
+      bookable: false,
+      reason: 'unavailable',
+      error: body.error?.code ?? 'AE_ERROR',
+    };
   }
 
-  return { success: true, bookable: body.data.bookable, reason: body.data.reason };
+  return { success: true, bookable: body.data!.bookable, reason: body.data!.reason };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */
