@@ -92,5 +92,11 @@ export function validateBookingReadyToConfirm(
     return err('missing_required_context', 'Please provide a time slot before confirming.');
   }
 
+  // Customer name is required — bookings must be identifiable by name
+  const customerName = json.customer_name as string | undefined;
+  if (!customerName || customerName.trim().length === 0) {
+    return err('missing_required_context', 'Please provide the customer name before confirming.');
+  }
+
   return null;
 }

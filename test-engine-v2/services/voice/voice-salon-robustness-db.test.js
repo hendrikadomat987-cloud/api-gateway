@@ -184,6 +184,7 @@ describe('voice / salon / robustness-db', () => {
       await tool(callId, 'confirm_booking', {
         selected_date: '2026-05-01',
         selected_time_slot: '10:00',
+        customer_name: 'Test Kunde',
       });
 
       const r = await tool(callId, 'add_booking_service', { service_id: serviceId });
@@ -204,11 +205,13 @@ describe('voice / salon / robustness-db', () => {
       await tool(callId, 'confirm_booking', {
         selected_date: '2026-05-01',
         selected_time_slot: '10:00',
+        customer_name: 'Test Kunde',
       });
 
       const r2 = await tool(callId, 'confirm_booking', {
         selected_date: '2026-05-01',
         selected_time_slot: '10:00',
+        customer_name: 'Test Kunde',
       });
       expect(r2.success).toBe(false);
       expect(r2.error).toBe('already_confirmed');
@@ -244,6 +247,25 @@ describe('voice / salon / robustness-db', () => {
     });
   });
 
+  // ── L: Confirm without customer_name ─────────────────────────────────────
+
+  describe('L — confirm_booking without customer_name returns missing_required_context', () => {
+    const callId = uniqueVoiceCallId('salon-robust-l');
+    beforeAll(() => setupCall(callId));
+
+    it('returns missing_required_context when customer_name is absent', async () => {
+      await tool(callId, 'create_booking', {});
+      await tool(callId, 'add_booking_service', { service_id: serviceId });
+      const r = await tool(callId, 'confirm_booking', {
+        selected_date: '2026-05-01',
+        selected_time_slot: '10:00',
+        // customer_name intentionally omitted
+      });
+      expect(r.success).toBe(false);
+      expect(r.error).toBe('missing_required_context');
+    });
+  });
+
   // ── K: create_booking after confirm ───────────────────────────────────────
 
   describe('K — create_booking after confirm returns already_confirmed', () => {
@@ -256,6 +278,7 @@ describe('voice / salon / robustness-db', () => {
       await tool(callId, 'confirm_booking', {
         selected_date: '2026-05-20',
         selected_time_slot: '11:00',
+        customer_name: 'Test Kunde',
       });
 
       const r = await tool(callId, 'create_booking', {});
