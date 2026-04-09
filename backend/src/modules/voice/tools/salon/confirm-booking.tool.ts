@@ -10,6 +10,7 @@ import {
   upsertSalonContext,
 } from '../../repositories/voice-salon-contexts.repository.js';
 import { finalizeSalonBooking } from '../../repositories/salon-bookings.repository.js';
+import { findStylistById } from '../../repositories/salon-stylists.repository.js';
 import { validateBookingReadyToConfirm } from './booking-guards.js';
 import type { ContextService } from './booking-reference-resolver.js';
 
@@ -42,7 +43,20 @@ export async function runConfirmBooking(
   if (args.customer_phone && typeof args.customer_phone === 'string') json.customer_phone = args.customer_phone;
   if (args.selected_date  && typeof args.selected_date  === 'string') json.selected_date  = args.selected_date;
   if (args.selected_time_slot && typeof args.selected_time_slot === 'string') json.selected_time_slot = args.selected_time_slot;
-  if (args.stylist_id && typeof args.stylist_id === 'string') json.selected_stylist_id = args.stylist_id;
+
+  // Validate stylist_id against the calling tenant before accepting it.
+  // A foreign UUID must not be written into this tenant's booking row.
+  if (args.stylist_id && typeof args.stylist_id === 'string') {
+    const stylist = await findStylistById(context.tenantId, args.stylist_id);
+    if (!stylist) {
+      return {
+        success: false,
+        error:   'stylist_not_found',
+        message: 'The requested stylist was not found. Please choose a valid stylist or omit the stylist preference.',
+      };
+    }
+    json.selected_stylist_id = stylist.id;
+  }
 
   // Guard: readiness validation
   const readyErr = validateBookingReadyToConfirm(json);

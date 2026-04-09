@@ -8,9 +8,14 @@ require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 // ── Token resolution ──────────────────────────────────────────────────────────
 
 // Support legacy TOKEN env var as fallback for TOKEN_TENANT_A
-const tenantA    = process.env.TOKEN_TENANT_A    || process.env.TOKEN || '';
-const tenantB    = process.env.TOKEN_TENANT_B    || '';
-const tenantSalon = process.env.TOKEN_TENANT_SALON || '';
+const tenantA        = process.env.TOKEN_TENANT_A           || process.env.TOKEN || '';
+const tenantB        = process.env.TOKEN_TENANT_B           || '';
+const tenantSalon    = process.env.TOKEN_TENANT_SALON       || '';
+const tenantSalon2   = process.env.TOKEN_TENANT_SALON_2     || '';
+// Optional — needed for /api/v1/features tests against the feature gate tenant.
+// Generate: a JWT with organization_id = '44444444-4444-4444-4444-444444444444'.
+// VAPI webhook tests for this tenant do NOT require this token.
+const tenantFeatureGate = process.env.TOKEN_FEATURE_GATE_TENANT || '';
 
 // ── Hard validation for required vars ─────────────────────────────────────────
 
@@ -40,8 +45,16 @@ const config = {
     tenantA,
     /** Valid token for Tenant B — used in RLS / cross-tenant tests. */
     tenantB,
-    /** Valid token for Salon Tenant (00000000-…-0002) — used in salon track tests. */
+    /** Valid token for Salon Tenant (00000000-…-0002) — Morgenlicht, Köln. */
     tenantSalon,
+    /** Valid token for Salon Tenant 2 (00000000-…-0003) — Studio Nord, Hamburg. */
+    tenantSalon2,
+    /**
+     * Optional. JWT with organization_id = '44444444-4444-4444-4444-444444444444'.
+     * Required only for /api/v1/features tests against the feature gate tenant.
+     * VAPI webhook tests for Layer-2 gating work without this token.
+     */
+    tenantFeatureGate,
     /** An expired JWT — used to verify 401 TOKEN_EXPIRED responses. */
     expired: process.env.TOKEN_EXPIRED || 'expired-token',
     /** A syntactically invalid string — used to verify 401 INVALID_TOKEN. */

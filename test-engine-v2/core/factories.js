@@ -250,6 +250,10 @@ function uniqueVoiceCallId(prefix = 'test-call-voice') {
 const VAPI_ASSISTANT_ID            = process.env.VAPI_ASSISTANT_ID            || '';
 const VAPI_RESTAURANT_ASSISTANT_ID = process.env.VAPI_RESTAURANT_ASSISTANT_ID || '';
 const VAPI_SALON_ASSISTANT_ID      = process.env.VAPI_SALON_ASSISTANT_ID      || '';
+const VAPI_SALON_2_ASSISTANT_ID    = process.env.VAPI_SALON_2_ASSISTANT_ID    || '';
+// Feature-gate test tenant (44444444-…): booking-track, voice-only features.
+// Fixed value — matches the provider_agent_id seeded in 20260410000001.
+const VAPI_FEATURE_GATE_ASSISTANT_ID = process.env.VAPI_FEATURE_GATE_ASSISTANT_ID || 'test-feature-gate-assistant-001';
 
 /**
  * Build the VAPI call sub-object.
@@ -377,6 +381,8 @@ module.exports = {
   VAPI_ASSISTANT_ID,
   VAPI_RESTAURANT_ASSISTANT_ID,
   VAPI_SALON_ASSISTANT_ID,
+  VAPI_SALON_2_ASSISTANT_ID,
+  VAPI_FEATURE_GATE_ASSISTANT_ID,
   REQUEST_TYPES,
   REQUEST_STATUSES,
   RESOURCE_TYPES,

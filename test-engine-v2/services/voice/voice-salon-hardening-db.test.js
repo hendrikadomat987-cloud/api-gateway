@@ -155,17 +155,18 @@ describe('voice / salon / hardening-db', () => {
     const callId = uniqueVoiceCallId('salon-hard-e-stylist');
     beforeAll(() => setupCall(callId));
 
-    it('confirm with stylist_id returns stylist_id in response', async () => {
+    it('confirm with valid own-tenant stylist_id returns stylist_id in response', async () => {
       await tool(callId, 'create_booking', {});
       await tool(callId, 'add_booking_service', { service_id: serviceId1 });
       const r = await tool(callId, 'confirm_booking', {
         selected_date:      '2026-07-01',
         selected_time_slot: '09:00',
-        stylist_id:         '00000000-0000-0000-0000-000000000001', // fake UUID — just tests flow
+        // Real Morgenlicht stylist UUID (seed: aa000001-…-0001 = Anna Weber)
+        stylist_id:         'aa000001-0000-0000-0000-000000000001',
       });
       expect(r.success).toBe(true);
-      // stylist_id flows through regardless of whether it resolves
-      expect(typeof r.stylist_id).toBe('string');
+      // stylist_id must be returned when a valid own-tenant UUID is provided
+      expect(r.stylist_id).toBe('aa000001-0000-0000-0000-000000000001');
     });
   });
 

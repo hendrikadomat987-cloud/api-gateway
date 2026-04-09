@@ -28,6 +28,7 @@
 
 require('dotenv').config();
 const { Pool } = require('pg');
+const { provisionTenantDomains } = require('./lib/provision-tenant-domains');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -539,6 +540,10 @@ async function main() {
     }
 
     await client.query('COMMIT');
+
+    // ── Feature provisioning (outside transaction — idempotent, safe to retry) ──
+    console.log('\nProvisioning features (voice + salon domains)…');
+    await provisionTenantDomains(client, TENANT_ID, ['voice', 'salon']);
 
     console.log('─'.repeat(60));
     console.log('✅ Salon Morgenlicht seeding complete.\n');

@@ -16,6 +16,7 @@
  *   H. Duplicate confirm                   → already_confirmed
  *   I. create_booking idempotent           → reused
  *   J. Missing service_id in add_booking_service → missing_service_reference
+ *   L. Confirm without customer_name            → succeeds (customer_name not required)
  */
 
 const config = require('../../config/config');
@@ -248,21 +249,25 @@ describe('voice / salon / robustness-db', () => {
   });
 
   // ── L: Confirm without customer_name ─────────────────────────────────────
+  // customer_name is no longer a hard-required guard (removed in booking-guards.ts).
+  // Hardening tests C–F confirm that bookings succeed without it.
+  // This test now validates the current semantics: confirm succeeds when
+  // date + time_slot + service are present, regardless of customer_name.
 
-  describe('L — confirm_booking without customer_name returns missing_required_context', () => {
+  describe('L — confirm_booking succeeds when all required context is present, even without customer_name', () => {
     const callId = uniqueVoiceCallId('salon-robust-l');
     beforeAll(() => setupCall(callId));
 
-    it('returns missing_required_context when customer_name is absent', async () => {
+    it('confirm_booking without customer_name succeeds when date, time_slot and service are present', async () => {
       await tool(callId, 'create_booking', {});
       await tool(callId, 'add_booking_service', { service_id: serviceId });
       const r = await tool(callId, 'confirm_booking', {
         selected_date: '2026-05-01',
         selected_time_slot: '10:00',
-        // customer_name intentionally omitted
+        // customer_name intentionally omitted — no longer required
       });
-      expect(r.success).toBe(false);
-      expect(r.error).toBe('missing_required_context');
+      expect(r.success).toBe(true);
+      expect(r.status).toBe('confirmed');
     });
   });
 

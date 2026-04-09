@@ -28,7 +28,6 @@
 
 const { createClient }       = require('../../core/apiClient');
 const { TestContext }        = require('../../core/context');
-const { cleanupContext }     = require('../../core/cleanup');
 const config                 = require('../../config/config');
 const {
   expectSuccess,
@@ -52,22 +51,6 @@ const clientA = createClient({ token: config.tokens.tenantA });
 const clientB = createClient({ token: config.tokens.tenantB });
 
 const ctx = new TestContext();
-
-// ── Tenant A setup and teardown ────────────────────────────────────────────────
-
-describe.skip('availability-engine / rls / setup', () => {
-  // beforeAll / afterAll are inside describe.skip so they never execute.
-  // When activating: move these hooks outside the skip or into the active describe block.
-  beforeAll(async () => {
-    // TODO: create a Tenant A customer, add working hours via POST /api/v1/availability,
-    //       create a sample appointment, and register the customer_id:
-    // ctx.register('customers', tenantACustomerId);
-  });
-
-  afterAll(async () => {
-    await cleanupContext(ctx, { client: clientA });
-  });
-});
 
 // ── Cross-tenant slots isolation ───────────────────────────────────────────────
 

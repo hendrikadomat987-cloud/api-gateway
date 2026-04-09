@@ -2,6 +2,8 @@
 import { VoiceToolNotAllowedError } from '../../../errors/voice-errors.js';
 import { updateSession } from '../repositories/voice-sessions.repository.js';
 import type { VoiceContext, ToolInput, ToolResult } from '../../../types/voice.js';
+import { featureService } from '../../features/services/feature.service.js';
+import { getRequiredFeature } from './tool-feature-map.js';
 
 // ── Booking tools ─────────────────────────────────────────────────────────────
 
@@ -84,6 +86,11 @@ const TOOL_REGISTRY: Record<string, Record<string, ToolHandler>> = {
 /**
  * Dispatches a list of tool inputs to the correct handler for the current track.
  * Each tool is executed independently; failures are captured per-tool.
+ *
+ * Gating order:
+ *   1. Track check — is the tool registered for this track at all?
+ *   2. Feature check — does the tenant have the required feature enabled?
+ *   3. Tool execution
  */
 export async function dispatchTools(
   context: VoiceContext,
@@ -92,8 +99,15 @@ export async function dispatchTools(
   const trackMap = TOOL_REGISTRY[context.track];
   if (!trackMap) throw new VoiceToolNotAllowedError(`track:${context.track}`);
 
+  // Fetch all enabled features once for this tenant — avoids N DB round-trips
+  // when multiple tools are dispatched in the same request.
+  const enabledFeatures = new Set(
+    await featureService.getTenantFeatures(context.tenantId),
+  );
+
   return Promise.all(
     tools.map(async (tool): Promise<ToolResult> => {
+      // Layer 1: track-level gate
       const handler = trackMap[tool.name];
       if (!handler) {
         return {
@@ -103,6 +117,17 @@ export async function dispatchTools(
         };
       }
 
+      // Layer 2: feature-level gate
+      const requiredFeature = getRequiredFeature(tool.name, context.track);
+      if (requiredFeature && !enabledFeatures.has(requiredFeature)) {
+        return {
+          name:    tool.name,
+          success: false,
+          error:   `Feature '${requiredFeature}' is not enabled for this tenant.`,
+        };
+      }
+
+      // Layer 3: execute
       try {
         const result = await handler(context, tool.arguments);
         return { name: tool.name, success: true, result };

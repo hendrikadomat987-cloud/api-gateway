@@ -217,6 +217,16 @@ function retryVoiceEvent(token, eventId) {
   return createClient({ token }).post(`/voice/events/${eventId}/retry`, {});
 }
 
+/**
+ * GET /api/v1/features
+ * Returns enabled features and domains for the calling tenant.
+ *
+ * @param {string} token
+ */
+function getTenantFeatures(token) {
+  return createClient({ token }).get('/api/v1/features');
+}
+
 module.exports = {
   ApiClient,
   createClient,
@@ -232,4 +242,6 @@ module.exports = {
   postVoiceFallback,
   postVoiceHandover,
   retryVoiceEvent,
+  // Features
+  getTenantFeatures,
 };
