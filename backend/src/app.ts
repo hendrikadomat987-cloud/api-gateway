@@ -47,6 +47,40 @@ const app = Fastify({
     },
   });
 
+  // ── JSON body parser — tolerate empty bodies ──────────────────────────────
+  //
+  // Fastify v5 classifies DELETE (and OPTIONS) as "bodywith" methods: it tries
+  // to parse the body whenever Content-Type: application/json is present.
+  // REST clients — including our test suite — routinely send that header even
+  // on bodyless DELETE requests.  Fastify's built-in parser throws
+  // FST_ERR_CTP_EMPTY_JSON_BODY *before* preHandlers run, so auth middleware
+  // never executes and every unauthenticated DELETE comes back as 400 instead
+  // of 401, and every DELETE with an invalid UUID returns VALIDATION_ERROR
+  // instead of INVALID_ID.
+  //
+  // Overriding the parser to return {} for empty bodies lets the request
+  // proceed through the normal auth → validation → dispatch lifecycle.
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      if (!body || (body as string).length === 0) {
+        done(null, {});
+        return;
+      }
+      try {
+        done(null, JSON.parse(body as string));
+      } catch {
+        // Attach statusCode so the global error handler maps it to VALIDATION_ERROR
+        const err = Object.assign(
+          new Error('Invalid JSON in request body'),
+          { statusCode: 400 },
+        );
+        done(err);
+      }
+    },
+  );
+
   // ── Global error handler ───────────────────────────────────────────────────
 
   app.setErrorHandler((error, request, reply) => {
