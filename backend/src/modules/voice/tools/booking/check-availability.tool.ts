@@ -58,7 +58,7 @@ export async function runCheckAvailability(
 
   const body = await response.json() as {
     success: boolean;
-    data?: { bookable: boolean; reason: string | null };
+    data?: { bookable: boolean; reason: string | null; slots?: string[] };
     error?: { code: string; message: string };
   };
 
@@ -72,7 +72,12 @@ export async function runCheckAvailability(
     };
   }
 
-  return { success: true, bookable: body.data!.bookable, reason: body.data!.reason };
+  return {
+    success: true,
+    bookable: body.data!.bookable,
+    reason: body.data!.reason,
+    slots: (body.data as any).slots ?? [],
+  };
 }
 
 /** Route handler for direct HTTP invocation (testing only). */

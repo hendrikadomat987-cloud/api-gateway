@@ -2,7 +2,7 @@ import { AppError } from '../errors/index.js';
 import type { ServiceName } from './serviceRegistry.js';
 
 /** Subset of HTTP methods used by this gateway. */
-export type GatewayMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type GatewayMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 type RouteKey = GatewayMethod | `${GatewayMethod}_ID`;
 
@@ -22,6 +22,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'customer/get',
     GET_ID:     'customer/get',
     PATCH_ID:   'customer/update',
+    PUT_ID:     'customer/update',
     DELETE_ID:  'customer/delete',
   },
   appointments: {
@@ -29,6 +30,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'appointments/list',
     GET_ID:     'appointments/get',
     PATCH_ID:   'appointments/update',
+    PUT_ID:     'appointments/update',
     DELETE_ID:  'appointments/delete',
   },
   requests: {
@@ -36,6 +38,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'requests/list',
     GET_ID:     'requests/get',
     PATCH_ID:   'requests/update',
+    PUT_ID:     'requests/update',
     DELETE_ID:  'requests/delete',
   },
   resources: {
@@ -43,6 +46,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'resources/list',
     GET_ID:     'resources/get',
     PATCH_ID:   'resources/update',
+    PUT_ID:     'resources/update',
     DELETE_ID:  'resources/delete',
   },
   availability: {
@@ -50,6 +54,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'availability/list',
     GET_ID:     'availability/get',
     PATCH_ID:   'availability/update',
+    PUT_ID:     'availability/update',
     DELETE_ID:  'availability/delete',
   },
   notifications: {
@@ -57,6 +62,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'notifications/list',
     GET_ID:     'notifications/get',
     PATCH_ID:   'notifications/update',
+    PUT_ID:     'notifications/update',
     DELETE_ID:  'notifications/delete',
   },
   status: {
@@ -64,6 +70,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'status/list',
     GET_ID:     'status/get',
     PATCH_ID:   'status/update',
+    PUT_ID:     'status/update',
     DELETE_ID:  'status/delete',
   },
   knowledge: {
@@ -71,6 +78,7 @@ const SERVICE_MAP: Record<ServiceName, ServiceRouteMap> = {
     GET:        'knowledge/list',
     GET_ID:     'knowledge/get',
     PATCH_ID:   'knowledge/update',
+    PUT_ID:     'knowledge/update',
     DELETE_ID:  'knowledge/delete',
   },
 

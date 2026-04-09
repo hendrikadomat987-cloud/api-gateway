@@ -1,0 +1,59 @@
+{
+  "name": "voice — answer_booking_question",
+  "active": true,
+  "nodes": [
+    {
+      "id": "abq-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "voice-answer-booking-question-webhook-001",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "answer-booking-question",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "abq-code",
+      "name": "Answer Question",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── voice / answer_booking_question ──────────────────────────────────────────\n// Input: POST body with question (string)\n// Queries the knowledge base for relevant articles, or falls back to a\n// standard booking information answer.\n\nconst SUPABASE_URL = $env.SUPABASE_URL;\nconst SUPABASE_KEY = $env.SUPABASE_SERVICE_KEY;\n\nconst item     = $input.first();\nconst headers  = item.json.headers || {};\nconst body     = item.json.body   || {};\n\nconst tenantId = (headers['x-tenant-id'] || '').toString().trim();\nconst question = (body.question || '').toString().trim();\n\nif (!question) {\n  return [{ json: { success: false, error: { code: 'VALIDATION_ERROR', message: 'question is required' } } }];\n}\n\n// Try to find a relevant knowledge article\nlet articles = [];\nif (SUPABASE_URL && SUPABASE_KEY && tenantId) {\n  try {\n    const resp = await $helpers.httpRequest({\n      method: 'GET',\n      url: `${SUPABASE_URL}/rest/v1/knowledge_articles?tenant_id=eq.${tenantId}&status=eq.published&select=title,content&limit=3`,\n      headers: {\n        'apikey': SUPABASE_KEY,\n        'Authorization': `Bearer ${SUPABASE_KEY}`,\n      },\n    });\n    if (Array.isArray(resp)) articles = resp;\n  } catch (_) {\n    // Ignore DB errors — fall back to static answer\n  }\n}\n\nlet answer;\nif (articles.length > 0) {\n  // Return content from the first available article\n  answer = articles[0].content || articles[0].title;\n} else {\n  // Static fallback answer\n  answer = 'Gerne helfen wir Ihnen bei Ihrer Buchungsanfrage! Sie können online über unsere Website einen Termin buchen oder uns direkt anrufen. Unsere Öffnungszeiten sind Montag bis Freitag von 9 bis 18 Uhr. Bei Fragen zu spezifischen Leistungen und Preisen beraten wir Sie gerne persönlich.';\n}\n\nreturn [{ json: { success: true, answer } }];\n"
+      }
+    },
+    {
+      "id": "abq-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Answer Question", "type": "main", "index": 0 }]
+      ]
+    },
+    "Answer Question": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

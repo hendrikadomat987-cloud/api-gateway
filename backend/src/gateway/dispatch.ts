@@ -52,8 +52,9 @@ function buildTargetUrl(
   method: string,
 ): string {
   const url = new URL(`${baseUrl}/webhook/${webhookPath}`);
-  // id is appended as a query param for read-only methods where fetch drops the body
-  if (id && (method === 'GET' || method === 'DELETE')) {
+  // id is always forwarded as a query param — n8n workflows read it from query regardless of method.
+  // This matches the Express gateway behaviour where extraMeta.id is appended to queryParams.
+  if (id) {
     url.searchParams.set('id', id);
   }
   return url.toString();

@@ -90,19 +90,19 @@ export async function apiRoutes(
     handler: apiHandler,
   });
 
-  // Resource routes — id required (GET one, PATCH, DELETE).
+  // Resource routes — id required (GET one, PATCH, PUT, DELETE).
   // POST is also included here for operation-style services (e.g. POST /availability-engine/slots)
   // where the second path segment is an operation name rather than a resource UUID.
   app.route({
-    method: ['GET', 'POST', 'PATCH', 'DELETE'],
+    method: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     url: '/api/:version/:service/:id',
     preHandler,
     handler: apiHandler,
   });
 
-  // Explicit catch: PATCH / DELETE sent without id → clear MISSING_ID error
+  // Explicit catch: PATCH / PUT / DELETE sent without id → clear MISSING_ID error
   app.route({
-    method: ['PATCH', 'DELETE'],
+    method: ['PATCH', 'PUT', 'DELETE'],
     url: '/api/:version/:service',
     preHandler,
     handler: async (_request, _reply) => {

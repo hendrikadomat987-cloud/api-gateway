@@ -97,7 +97,10 @@ export async function markCallEnded(opts: {
   return updateCall(opts.tenantId, opts.callId, {
     status: 'completed',
     ended_at: new Date().toISOString(),
-    duration_seconds: opts.durationSeconds,
+    // Real Vapi payloads send fractional durationSeconds (e.g. 13.65).
+    // The DB column is INTEGER — round to the nearest second.
+    duration_seconds:
+      opts.durationSeconds != null ? Math.round(opts.durationSeconds) : undefined,
     summary: opts.summary,
   });
 }
