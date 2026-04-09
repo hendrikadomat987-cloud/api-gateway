@@ -16,7 +16,10 @@ export async function voicePublicRoutes(
   app: FastifyInstance,
   opts: { config: Config },
 ): Promise<void> {
-  // Capture rawBody as Buffer before JSON-parsing — scoped to this plugin only
+  // Capture rawBody as Buffer before JSON-parsing — scoped to this plugin only.
+  // Remove the inherited root-scope parser first (Fastify v5 requires this when
+  // the parent has already registered a custom application/json parser).
+  app.removeContentTypeParser('application/json');
   app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req, body, done) => {
     try {
       (_req as any).rawBody = body;
