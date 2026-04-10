@@ -227,6 +227,52 @@ function getTenantFeatures(token) {
   return createClient({ token }).get('/api/v1/features');
 }
 
+/**
+ * GET /api/v1/features?verbose=true
+ * Returns full feature + domain detail including disabled entries.
+ *
+ * @param {string} token
+ */
+function getTenantFeaturesVerbose(token) {
+  return createClient({ token }).get('/api/v1/features', { verbose: 'true' });
+}
+
+/**
+ * POST /internal/features/domains/enable
+ * @param {string} token
+ * @param {string} domainKey
+ */
+function enableDomain(token, domainKey) {
+  return createClient({ token }).post('/internal/features/domains/enable', { domain: domainKey });
+}
+
+/**
+ * POST /internal/features/domains/disable
+ * @param {string} token
+ * @param {string} domainKey
+ */
+function disableDomain(token, domainKey) {
+  return createClient({ token }).post('/internal/features/domains/disable', { domain: domainKey });
+}
+
+/**
+ * POST /internal/features/features/enable
+ * @param {string} token
+ * @param {string} featureKey
+ */
+function enableFeature(token, featureKey) {
+  return createClient({ token }).post('/internal/features/features/enable', { feature: featureKey });
+}
+
+/**
+ * POST /internal/features/features/disable
+ * @param {string} token
+ * @param {string} featureKey
+ */
+function disableFeature(token, featureKey) {
+  return createClient({ token }).post('/internal/features/features/disable', { feature: featureKey });
+}
+
 module.exports = {
   ApiClient,
   createClient,
@@ -242,6 +288,12 @@ module.exports = {
   postVoiceFallback,
   postVoiceHandover,
   retryVoiceEvent,
-  // Features
+  // Features — read
   getTenantFeatures,
+  getTenantFeaturesVerbose,
+  // Features — management
+  enableDomain,
+  disableDomain,
+  enableFeature,
+  disableFeature,
 };

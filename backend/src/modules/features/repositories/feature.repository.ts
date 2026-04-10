@@ -1,41 +1,39 @@
 // src/modules/features/repositories/feature.repository.ts
 //
-// Direct DB access for the Feature System V1.
-// tenant_features is RLS-protected; all queries run via withTenant().
-// domains/features/domain_features are global catalogues (no RLS).
+// Direct DB access for the Feature System V1 + V2 management layer.
+// tenant_features / tenant_domains are RLS-protected; all writes use withTenant().
+// domains / features / domain_features are global catalogues (no RLS).
+//
+// Actual DB schema (as deployed):
+//   domains        — id, key, name, created_at
+//   features       — id, key, created_at
+//   domain_features— domain_id, feature_id
+//   tenant_domains — id, tenant_id, domain_id, enabled_at (NULL = disabled)
+//   tenant_features— id, tenant_id, feature_id, enabled (boolean)
 
 import { withTenant, pool } from '../../../lib/db.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface TenantFeatureRow {
-  feature_key: string;
-  is_enabled:  boolean;
-  source:      string;
+export interface FeatureDetail {
+  key:     string;
+  enabled: boolean;
 }
 
-export interface TenantDomainRow {
-  domain_key: string;
-  is_enabled: boolean;
+export interface DomainDetail {
+  key:     string;
+  name:    string;
+  enabled: boolean;
 }
 
-// ── Tenant-scoped queries ─────────────────────────────────────────────────────
+// ── Read queries ──────────────────────────────────────────────────────────────
 
 /**
  * Returns all ENABLED feature keys for a tenant.
+ * Respects both tenant_features.enabled AND the domain state:
+ * a feature is only returned if its domain is also enabled for this tenant.
+ *
  * Used by the feature gate in resolve-tool.ts — called once per dispatch.
- *
- * Phase-2 note — domain-disable inconsistency:
- *   This query checks tenant_features.is_enabled but does NOT join tenant_domains.
- *   If a domain is disabled via tenant_domains.is_enabled = false, its features
- *   remain accessible as long as their tenant_features rows have is_enabled = true.
- *   The /api/v1/features domains list correctly excludes the disabled domain, but
- *   the tool gate will still pass for that domain's features.
- *
- *   This inconsistency is acceptable in Phase 1 because no code path currently
- *   sets tenant_domains.is_enabled = false (provisioning is additive-only).
- *   When a Domain-Disable admin feature is introduced in Phase 2, this query
- *   must be updated to also filter by tenant_domains.is_enabled = true.
  */
 export async function getTenantFeatureKeys(tenantId: string): Promise<string[]> {
   return withTenant(tenantId, async (client) => {
@@ -45,6 +43,14 @@ export async function getTenantFeatureKeys(tenantId: string): Promise<string[]> 
        JOIN features f ON f.id = tf.feature_id
        WHERE tf.tenant_id = $1
          AND tf.enabled   = true
+         AND EXISTS (
+           SELECT 1
+           FROM domain_features df
+           JOIN tenant_domains td ON td.domain_id = df.domain_id
+           WHERE df.feature_id = f.id
+             AND td.tenant_id  = $1
+             AND td.enabled_at IS NOT NULL
+         )
        ORDER BY f.key`,
       [tenantId],
     );
@@ -74,7 +80,7 @@ export async function hasTenantFeature(tenantId: string, featureKey: string): Pr
 }
 
 /**
- * Returns all enabled domains for a tenant.
+ * Returns all enabled domain keys for a tenant.
  */
 export async function getTenantDomainKeys(tenantId: string): Promise<string[]> {
   return withTenant(tenantId, async (client) => {
@@ -91,25 +97,192 @@ export async function getTenantDomainKeys(tenantId: string): Promise<string[]> {
   });
 }
 
+/**
+ * Returns all tenant_features rows with enabled state — used by the verbose endpoint.
+ * Returns ALL rows regardless of enabled state, so admins see the full picture.
+ */
+export async function getTenantFeatureDetails(tenantId: string): Promise<FeatureDetail[]> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query<{ key: string; enabled: boolean }>(
+      `SELECT f.key, tf.enabled
+       FROM tenant_features tf
+       JOIN features f ON f.id = tf.feature_id
+       WHERE tf.tenant_id = $1
+       ORDER BY f.key`,
+      [tenantId],
+    );
+    return result.rows.map((r) => ({ key: r.key, enabled: r.enabled }));
+  });
+}
+
+/**
+ * Returns all tenant_domains rows with enabled state — used by the verbose endpoint.
+ */
+export async function getTenantDomainDetails(tenantId: string): Promise<DomainDetail[]> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query<{ key: string; name: string; enabled: boolean }>(
+      `SELECT d.key, d.name, td.enabled_at IS NOT NULL AS enabled
+       FROM tenant_domains td
+       JOIN domains d ON d.id = td.domain_id
+       WHERE td.tenant_id = $1
+       ORDER BY d.key`,
+      [tenantId],
+    );
+    return result.rows.map((r) => ({ key: r.key, name: r.name, enabled: r.enabled }));
+  });
+}
+
+// ── Domain management ─────────────────────────────────────────────────────────
+
+/**
+ * Enables a domain for a tenant.
+ *
+ * - Upserts tenant_domains with enabled_at = now()
+ * - Provisions (or re-enables) all features belonging to the domain
+ *
+ * Safe to call when the domain is already enabled — idempotent.
+ */
+export async function enableDomain(tenantId: string, domainKey: string): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    const domainRes = await client.query<{ id: string }>(
+      `SELECT id FROM domains WHERE key = $1`,
+      [domainKey],
+    );
+    if (domainRes.rows.length === 0) {
+      throw new Error(`Unknown domain '${domainKey}'`);
+    }
+    const domainId = domainRes.rows[0].id;
+
+    // Upsert tenant_domain — set enabled_at on conflict too (re-enable)
+    await client.query(
+      `INSERT INTO tenant_domains (tenant_id, domain_id, enabled_at)
+       VALUES ($1, $2, now())
+       ON CONFLICT (tenant_id, domain_id) DO UPDATE
+         SET enabled_at = now()`,
+      [tenantId, domainId],
+    );
+
+    // Provision / re-enable all features of this domain
+    const featuresRes = await client.query<{ feature_id: string }>(
+      `SELECT feature_id FROM domain_features WHERE domain_id = $1`,
+      [domainId],
+    );
+    for (const row of featuresRes.rows) {
+      await client.query(
+        `INSERT INTO tenant_features (tenant_id, feature_id, enabled)
+         VALUES ($1, $2, true)
+         ON CONFLICT (tenant_id, feature_id) DO UPDATE
+           SET enabled = true`,
+        [tenantId, row.feature_id],
+      );
+    }
+  });
+}
+
+/**
+ * Disables a domain for a tenant.
+ *
+ * - Sets tenant_domains.enabled_at = null
+ * - Also sets enabled = false on all tenant_features rows belonging to this domain
+ *
+ * Does not delete rows (soft-state only).
+ * Features shared with another enabled domain are still disabled here —
+ * the caller (service layer) is responsible for re-enabling them if needed,
+ * or the tenant can re-enable individually via enableFeature().
+ */
+export async function disableDomain(tenantId: string, domainKey: string): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    const domainRes = await client.query<{ id: string }>(
+      `SELECT id FROM domains WHERE key = $1`,
+      [domainKey],
+    );
+    if (domainRes.rows.length === 0) {
+      throw new Error(`Unknown domain '${domainKey}'`);
+    }
+    const domainId = domainRes.rows[0].id;
+
+    // Soft-disable the domain
+    await client.query(
+      `UPDATE tenant_domains SET enabled_at = null
+       WHERE tenant_id = $1 AND domain_id = $2`,
+      [tenantId, domainId],
+    );
+
+    // Disable all features belonging to this domain
+    await client.query(
+      `UPDATE tenant_features SET enabled = false
+       WHERE tenant_id  = $1
+         AND feature_id IN (
+           SELECT feature_id FROM domain_features WHERE domain_id = $2
+         )`,
+      [tenantId, domainId],
+    );
+  });
+}
+
+// ── Feature management ────────────────────────────────────────────────────────
+
+/**
+ * Enables a single feature for a tenant.
+ * Idempotent — safe to call when already enabled.
+ * Creates the row if it does not yet exist (manual override).
+ */
+export async function enableFeature(tenantId: string, featureKey: string): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    const featureRes = await client.query<{ id: string }>(
+      `SELECT id FROM features WHERE key = $1`,
+      [featureKey],
+    );
+    if (featureRes.rows.length === 0) {
+      throw new Error(`Unknown feature '${featureKey}'`);
+    }
+    const featureId = featureRes.rows[0].id;
+
+    await client.query(
+      `INSERT INTO tenant_features (tenant_id, feature_id, enabled)
+       VALUES ($1, $2, true)
+       ON CONFLICT (tenant_id, feature_id) DO UPDATE
+         SET enabled = true`,
+      [tenantId, featureId],
+    );
+  });
+}
+
+/**
+ * Disables a single feature for a tenant.
+ * Throws if the feature key does not exist in the global catalogue.
+ * No-op if the tenant has no row for this feature yet (soft-state only).
+ * Does not delete rows.
+ */
+export async function disableFeature(tenantId: string, featureKey: string): Promise<void> {
+  await withTenant(tenantId, async (client) => {
+    const featureRes = await client.query<{ id: string }>(
+      `SELECT id FROM features WHERE key = $1`,
+      [featureKey],
+    );
+    if (featureRes.rows.length === 0) {
+      throw new Error(`Unknown feature '${featureKey}'`);
+    }
+    await client.query(
+      `UPDATE tenant_features SET enabled = false
+       WHERE tenant_id  = $1
+         AND feature_id = $2`,
+      [tenantId, featureRes.rows[0].id],
+    );
+  });
+}
+
 // ── Provisioning ──────────────────────────────────────────────────────────────
 
 /**
- * Idempotently provisions a domain for a tenant.
+ * Idempotently provisions a domain for a tenant (additive only).
  *
- * Steps:
- *   1. Resolve domain_id from domain_key.
- *   2. Upsert tenant_domains row (ON CONFLICT DO NOTHING).
- *   3. For each feature in domain_features, upsert tenant_features row
- *      with source = 'domain_provisioned' (ON CONFLICT DO NOTHING).
+ * Does not overwrite existing rows — use enableDomain() to re-enable
+ * a previously disabled domain.
  *
- * Safe to call multiple times — existing rows are never downgraded or removed.
- *
- * Voice rule: Every voice-capable tenant needs 'voice.core' and 'voice.callback'.
- * These are seeded under the 'voice' domain in domain_features. This function
- * does NOT inject 'voice' automatically — the caller must include it explicitly.
- * Standard pattern for a new voice tenant with a specific domain:
+ * Standard pattern for a new voice tenant:
  *   await provisionTenantDomain(tenantId, 'voice');
- *   await provisionTenantDomain(tenantId, 'salon');   // or 'booking', 'restaurant'
+ *   await provisionTenantDomain(tenantId, 'salon');
  *
  * JavaScript equivalent (for seed scripts): lib/provision-tenant-domains.js
  */
@@ -118,9 +291,8 @@ export async function provisionTenantDomain(
   domainKey: string,
 ): Promise<void> {
   await withTenant(tenantId, async (client) => {
-    // 1. Resolve domain
     const domainRes = await client.query<{ id: string }>(
-      `SELECT id FROM domains WHERE domain_key = $1 AND is_active = true`,
+      `SELECT id FROM domains WHERE key = $1`,
       [domainKey],
     );
     if (domainRes.rows.length === 0) {
@@ -128,23 +300,21 @@ export async function provisionTenantDomain(
     }
     const domainId = domainRes.rows[0].id;
 
-    // 2. Upsert tenant_domain
     await client.query(
-      `INSERT INTO tenant_domains (tenant_id, domain_id, is_enabled)
-       VALUES ($1, $2, true)
+      `INSERT INTO tenant_domains (tenant_id, domain_id, enabled_at)
+       VALUES ($1, $2, now())
        ON CONFLICT (tenant_id, domain_id) DO NOTHING`,
       [tenantId, domainId],
     );
 
-    // 3. Upsert tenant_features for every feature in this domain
     const featuresRes = await client.query<{ feature_id: string }>(
       `SELECT feature_id FROM domain_features WHERE domain_id = $1`,
       [domainId],
     );
     for (const row of featuresRes.rows) {
       await client.query(
-        `INSERT INTO tenant_features (tenant_id, feature_id, is_enabled, source)
-         VALUES ($1, $2, true, 'domain_provisioned')
+        `INSERT INTO tenant_features (tenant_id, feature_id, enabled)
+         VALUES ($1, $2, true)
          ON CONFLICT (tenant_id, feature_id) DO NOTHING`,
         [tenantId, row.feature_id],
       );
@@ -155,14 +325,13 @@ export async function provisionTenantDomain(
 // ── Global catalogue (no tenant context needed) ───────────────────────────────
 
 /**
- * Returns all active domains from the global catalogue.
- * Used by admin/seed tooling — does not require tenant context.
+ * Returns all domains from the global catalogue.
  */
 export async function listAllDomains(): Promise<Array<{ domain_key: string; name: string }>> {
   const client = await pool.connect();
   try {
     const result = await client.query<{ domain_key: string; name: string }>(
-      `SELECT domain_key, name FROM domains WHERE is_active = true ORDER BY domain_key`,
+      `SELECT key AS domain_key, name FROM domains ORDER BY key`,
     );
     return result.rows;
   } finally {
@@ -171,16 +340,13 @@ export async function listAllDomains(): Promise<Array<{ domain_key: string; name
 }
 
 /**
- * Returns all active features from the global catalogue.
- * Used by admin/seed tooling — does not require tenant context.
+ * Returns all features from the global catalogue.
  */
-export async function listAllFeatures(): Promise<
-  Array<{ feature_key: string; name: string; category: string }>
-> {
+export async function listAllFeatures(): Promise<Array<{ feature_key: string }>> {
   const client = await pool.connect();
   try {
-    const result = await client.query<{ feature_key: string; name: string; category: string }>(
-      `SELECT feature_key, name, category FROM features WHERE is_active = true ORDER BY feature_key`,
+    const result = await client.query<{ feature_key: string }>(
+      `SELECT key AS feature_key FROM features ORDER BY key`,
     );
     return result.rows;
   } finally {

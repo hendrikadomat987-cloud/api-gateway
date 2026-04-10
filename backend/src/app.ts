@@ -13,6 +13,7 @@ import { voiceInternalRoutes } from './routes/voice/internal.js';
 import { voiceToolsBookingRoutes } from './routes/voice/tools-booking.js';
 import { voiceToolsRestaurantRoutes } from './routes/voice/tools-restaurant.js';
 import { featureRoutes } from './routes/features.js';
+import { featuresInternalRoutes } from './routes/features-internal.js';
 
 export interface BuildAppOptions {
   config: Config;
@@ -102,6 +103,7 @@ const app = Fastify({
 
   // ── Feature routes ─────────────────────────────────────────────────────────
   await app.register(featureRoutes);
+  await app.register(featuresInternalRoutes);
 
   // 404 fallback
   app.setNotFoundHandler((_request, reply) => {

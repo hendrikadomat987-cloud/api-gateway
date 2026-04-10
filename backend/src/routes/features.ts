@@ -1,7 +1,6 @@
 // src/routes/features.ts
 //
-// Feature System V1 — tenant-scoped read endpoints.
-// No write operations in Phase 1 (provisioning is seeded / service-internal).
+// Feature System — tenant-scoped read endpoints.
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authenticate } from '../middleware/auth.js';
@@ -14,29 +13,40 @@ export async function featureRoutes(app: FastifyInstance): Promise<void> {
   /**
    * GET /api/v1/features
    *
-   * Returns the enabled features and domains for the calling tenant.
-   * Uses the feature service cache (60 s TTL).
-   *
-   * Response:
+   * Default: returns enabled feature keys and domain keys for the calling tenant.
    *   { success: true, data: { features: string[], domains: string[] } }
+   *
+   * ?verbose=true: returns full state including disabled entries.
+   *   { success: true, data: {
+   *       features: Array<{ key: string, enabled: boolean }>,
+   *       domains:  Array<{ key: string, name: string, enabled: boolean }>
+   *   }}
+   *
+   * The verbose response bypasses cache and reads current DB state.
+   * The default response uses the 60 s in-process cache.
    */
-  app.get('/api/v1/features', { preHandler }, async (
-    request: FastifyRequest,
-    reply: FastifyReply,
-  ) => {
-    const tenantId = request.tenantId;
+  app.get(
+    '/api/v1/features',
+    { preHandler },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = request.tenantId;
+      const verbose  = (request.query as Record<string, string>).verbose === 'true';
 
-    // Sequential — not parallel. getTenantFeatures populates the in-process cache
-    // (features + domains together). The getTenantDomains call then returns from
-    // cache without a second DB round-trip. Using Promise.all here would fire
-    // 4 DB queries on cache-miss (both functions each fetch features AND domains
-    // internally) instead of 2.
-    const features = await featureService.getTenantFeatures(tenantId);
-    const domains  = await featureService.getTenantDomains(tenantId);
+      if (verbose) {
+        const [features, domains] = await Promise.all([
+          featureService.getTenantFeaturesVerbose(tenantId),
+          featureService.getTenantDomainsVerbose(tenantId),
+        ]);
+        return reply.send({ success: true, data: { features, domains } });
+      }
 
-    return reply.send({
-      success: true,
-      data: { features, domains },
-    });
-  });
+      // Sequential — getTenantFeatures populates the cache (features + domains
+      // together). getTenantDomains then returns from cache without a second
+      // DB round-trip.
+      const features = await featureService.getTenantFeatures(tenantId);
+      const domains  = await featureService.getTenantDomains(tenantId);
+
+      return reply.send({ success: true, data: { features, domains } });
+    },
+  );
 }
