@@ -17,6 +17,8 @@ import { featuresInternalRoutes } from './routes/features-internal.js';
 import { plansInternalRoutes } from './routes/plans-internal.js';
 import { usageRoutes } from './routes/usage.js';
 import { adminRoutes } from './routes/admin.js';
+import { billingRoutes } from './routes/billing.js';
+import { billingWebhookRoutes } from './routes/billing-webhook.js';
 
 export interface BuildAppOptions {
   config: Config;
@@ -110,6 +112,10 @@ const app = Fastify({
   await app.register(plansInternalRoutes);
   await app.register(usageRoutes);
   await app.register(adminRoutes, { adminToken: config.ADMIN_TOKEN });
+
+  // ── Billing routes ─────────────────────────────────────────────────────────
+  await app.register(billingRoutes, { config });
+  await app.register(billingWebhookRoutes, { config });
 
   // 404 fallback
   app.setNotFoundHandler((_request, reply) => {
