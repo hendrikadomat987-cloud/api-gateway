@@ -15,14 +15,21 @@ import {
   getTenantDomainKeys,
   getTenantFeatureDetails,
   getTenantDomainDetails,
+  getTenantFeaturesWithSource,
   enableDomain   as dbEnableDomain,
   disableDomain  as dbDisableDomain,
   enableFeature  as dbEnableFeature,
   disableFeature as dbDisableFeature,
   provisionTenantDomain,
   type FeatureDetail,
+  type FeatureDetailWithSource,
   type DomainDetail,
 } from '../repositories/feature.repository.js';
+import {
+  assignPlanToTenant,
+  getTenantPlan,
+  type TenantPlanRow,
+} from '../repositories/plan.repository.js';
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
@@ -106,11 +113,11 @@ async function hasFeature(tenantId: string, featureKey: string): Promise<boolean
 }
 
 /**
- * Returns verbose feature details (all rows, including disabled).
- * Bypasses cache — always reads current DB state.
+ * Returns verbose feature details with source provenance (Phase 3).
+ * Includes enabled and disabled features. Bypasses cache.
  */
-async function getTenantFeaturesVerbose(tenantId: string): Promise<FeatureDetail[]> {
-  return getTenantFeatureDetails(tenantId);
+async function getTenantFeaturesVerbose(tenantId: string): Promise<FeatureDetailWithSource[]> {
+  return getTenantFeaturesWithSource(tenantId);
 }
 
 /**
@@ -161,6 +168,25 @@ async function disableFeature(tenantId: string, featureKey: string): Promise<voi
   invalidateTenantFeatureCache(tenantId);
 }
 
+// ── Plan management ───────────────────────────────────────────────────────────
+
+/**
+ * Assigns a plan to a tenant and invalidates the feature cache.
+ * Replaces any existing plan assignment.
+ * Throws if the plan key does not exist.
+ */
+async function assignPlan(tenantId: string, planKey: string): Promise<void> {
+  await assignPlanToTenant(tenantId, planKey);
+  invalidateTenantFeatureCache(tenantId);
+}
+
+/**
+ * Returns the current plan assignment for a tenant, or null if none.
+ */
+async function getCurrentPlan(tenantId: string): Promise<TenantPlanRow | null> {
+  return getTenantPlan(tenantId);
+}
+
 // ── Provisioning ──────────────────────────────────────────────────────────────
 
 /**
@@ -186,6 +212,9 @@ export const featureService = {
   // Feature management
   enableFeature,
   disableFeature,
+  // Plan management
+  assignPlan,
+  getCurrentPlan,
   // Provisioning
   provisionDomain,
 };

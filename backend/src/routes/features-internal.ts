@@ -21,7 +21,7 @@ export async function featuresInternalRoutes(app: FastifyInstance): Promise<void
   // ── Domain enable ──────────────────────────────────────────────────────────
 
   app.post(
-    '/internal/features/domains/enable',
+    '/api/v1/internal/features/domains/enable',
     { preHandler },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { domain } = request.body as Record<string, unknown>;
@@ -45,7 +45,7 @@ export async function featuresInternalRoutes(app: FastifyInstance): Promise<void
   // ── Domain disable ─────────────────────────────────────────────────────────
 
   app.post(
-    '/internal/features/domains/disable',
+    '/api/v1/internal/features/domains/disable',
     { preHandler },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { domain } = request.body as Record<string, unknown>;
@@ -69,7 +69,7 @@ export async function featuresInternalRoutes(app: FastifyInstance): Promise<void
   // ── Feature enable ─────────────────────────────────────────────────────────
 
   app.post(
-    '/internal/features/features/enable',
+    '/api/v1/internal/features/features/enable',
     { preHandler },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { feature } = request.body as Record<string, unknown>;
@@ -93,7 +93,7 @@ export async function featuresInternalRoutes(app: FastifyInstance): Promise<void
   // ── Feature disable ────────────────────────────────────────────────────────
 
   app.post(
-    '/internal/features/features/disable',
+    '/api/v1/internal/features/features/disable',
     { preHandler },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { feature } = request.body as Record<string, unknown>;

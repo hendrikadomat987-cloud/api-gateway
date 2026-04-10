@@ -20,6 +20,14 @@ export interface FeatureDetail {
   enabled: boolean;
 }
 
+/** Extended detail with provenance — used by the verbose endpoint. */
+export interface FeatureDetailWithSource {
+  key:     string;
+  enabled: boolean;
+  /** 'plan' | 'override' | 'plan+override' */
+  source:  string;
+}
+
 export interface DomainDetail {
   key:     string;
   name:    string;
@@ -30,28 +38,47 @@ export interface DomainDetail {
 
 /**
  * Returns all ENABLED feature keys for a tenant.
- * Respects both tenant_features.enabled AND the domain state:
- * a feature is only returned if its domain is also enabled for this tenant.
+ *
+ * Resolution order (Phase 3):
+ *   1. Plan-granted features — features in plan_features for the tenant's plan,
+ *      provided the tenant has NOT explicitly disabled the feature
+ *      (tenant_features.enabled=false wins over plan baseline).
+ *   2. Manually enabled features — tenant_features.enabled=true
+ *      (Phase-2 behaviour, no domain-consistency check required).
+ *
+ * If the tenant has no plan (no tenant_plans row), leg 1 returns 0 rows and
+ * only leg 2 applies — identical to pre-Phase-3 behaviour.
  *
  * Used by the feature gate in resolve-tool.ts — called once per dispatch.
  */
 export async function getTenantFeatureKeys(tenantId: string): Promise<string[]> {
   return withTenant(tenantId, async (client) => {
     const result = await client.query<{ feature_key: string }>(
-      `SELECT f.key AS feature_key
-       FROM tenant_features tf
-       JOIN features f ON f.id = tf.feature_id
-       WHERE tf.tenant_id = $1
-         AND tf.enabled   = true
-         AND EXISTS (
-           SELECT 1
-           FROM domain_features df
-           JOIN tenant_domains td ON td.domain_id = df.domain_id
-           WHERE df.feature_id = f.id
-             AND td.tenant_id  = $1
-             AND td.enabled_at IS NOT NULL
-         )
-       ORDER BY f.key`,
+      `SELECT DISTINCT feature_key
+       FROM (
+         -- Leg 1: Plan-granted features (in plan_features, not explicitly disabled)
+         SELECT f.key AS feature_key
+         FROM tenant_plans tp
+         JOIN plan_features pf ON pf.plan_id = tp.plan_id
+         JOIN features f ON f.id = pf.feature_id
+         WHERE tp.tenant_id = $1
+           AND NOT EXISTS (
+             SELECT 1 FROM tenant_features tf_o
+             WHERE tf_o.tenant_id  = $1
+               AND tf_o.feature_id = f.id
+               AND tf_o.enabled    = false
+           )
+
+         UNION ALL
+
+         -- Leg 2: Manually enabled features (tenant_features row with enabled=true)
+         SELECT f.key AS feature_key
+         FROM tenant_features tf
+         JOIN features f ON f.id = tf.feature_id
+         WHERE tf.tenant_id = $1
+           AND tf.enabled   = true
+       ) _combined
+       ORDER BY feature_key`,
       [tenantId],
     );
     return result.rows.map((r) => r.feature_key);
@@ -94,6 +121,78 @@ export async function getTenantDomainKeys(tenantId: string): Promise<string[]> {
       [tenantId],
     );
     return result.rows.map((r) => r.domain_key);
+  });
+}
+
+/**
+ * Returns all ENABLED features with provenance source for a tenant.
+ * Used by the verbose endpoint (Phase 3).
+ *
+ * source values:
+ *   'plan'          — granted by the tenant's plan, no explicit tenant row
+ *   'override'      — manually enabled via tenant_features (or explicitly disabled)
+ *   'plan+override' — granted by plan AND has an explicit tenant_features.enabled=true row
+ *
+ * Disabled features (tenant_features.enabled=false) always appear as source='override'.
+ */
+export async function getTenantFeaturesWithSource(
+  tenantId: string,
+): Promise<FeatureDetailWithSource[]> {
+  return withTenant(tenantId, async (client) => {
+    const result = await client.query<{ key: string; enabled: boolean; source: string }>(
+      `SELECT feature_key AS key, enabled, source
+       FROM (
+         -- Enabled features with source detection
+         SELECT feature_key,
+                true AS enabled,
+                CASE
+                  WHEN plan_count > 0 AND override_count > 0 THEN 'plan+override'
+                  WHEN plan_count > 0                        THEN 'plan'
+                  ELSE                                            'override'
+                END AS source
+         FROM (
+           SELECT feature_key,
+                  COUNT(*) FILTER (WHERE src = 'plan')     AS plan_count,
+                  COUNT(*) FILTER (WHERE src = 'override') AS override_count
+           FROM (
+             -- Plan-granted features (in plan_features, not explicitly disabled)
+             SELECT f.key AS feature_key, 'plan' AS src
+             FROM tenant_plans tp
+             JOIN plan_features pf ON pf.plan_id = tp.plan_id
+             JOIN features f ON f.id = pf.feature_id
+             WHERE tp.tenant_id = $1
+               AND NOT EXISTS (
+                 SELECT 1 FROM tenant_features tf_o
+                 WHERE tf_o.tenant_id  = $1
+                   AND tf_o.feature_id = f.id
+                   AND tf_o.enabled    = false
+               )
+
+             UNION ALL
+
+             -- Manually enabled features (tenant_features row with enabled=true)
+             SELECT f.key AS feature_key, 'override' AS src
+             FROM tenant_features tf
+             JOIN features f ON f.id = tf.feature_id
+             WHERE tf.tenant_id = $1
+               AND tf.enabled   = true
+           ) _legs
+           GROUP BY feature_key
+         ) _counts
+
+         UNION ALL
+
+         -- Explicitly disabled features (tenant override = false)
+         SELECT f.key AS feature_key, false AS enabled, 'override' AS source
+         FROM tenant_features tf
+         JOIN features f ON f.id = tf.feature_id
+         WHERE tf.tenant_id = $1
+           AND tf.enabled   = false
+       ) _all
+       ORDER BY key`,
+      [tenantId],
+    );
+    return result.rows.map((r) => ({ key: r.key, enabled: r.enabled, source: r.source }));
   });
 }
 

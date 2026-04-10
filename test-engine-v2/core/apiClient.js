@@ -224,17 +224,17 @@ function retryVoiceEvent(token, eventId) {
  * @param {string} token
  */
 function getTenantFeatures(token) {
-  return createClient({ token }).get('/api/v1/features');
+  return createClient({ token }).get('/features');
 }
 
 /**
- * GET /api/v1/features?verbose=true
+ * GET /features?verbose=true
  * Returns full feature + domain detail including disabled entries.
  *
  * @param {string} token
  */
 function getTenantFeaturesVerbose(token) {
-  return createClient({ token }).get('/api/v1/features', { verbose: 'true' });
+  return createClient({ token }).get('/features', { verbose: 'true' });
 }
 
 /**
@@ -247,7 +247,7 @@ function enableDomain(token, domainKey) {
 }
 
 /**
- * POST /internal/features/domains/disable
+ * POST /api/v1/internal/features/domains/disable
  * @param {string} token
  * @param {string} domainKey
  */
@@ -256,7 +256,7 @@ function disableDomain(token, domainKey) {
 }
 
 /**
- * POST /internal/features/features/enable
+ * POST /api/v1/internal/features/features/enable
  * @param {string} token
  * @param {string} featureKey
  */
@@ -265,12 +265,29 @@ function enableFeature(token, featureKey) {
 }
 
 /**
- * POST /internal/features/features/disable
+ * POST /api/v1/internal/features/features/disable
  * @param {string} token
  * @param {string} featureKey
  */
 function disableFeature(token, featureKey) {
   return createClient({ token }).post('/internal/features/features/disable', { feature: featureKey });
+}
+
+/**
+ * POST /api/v1/internal/plans/assign
+ * @param {string} token
+ * @param {string} planKey
+ */
+function assignPlan(token, planKey) {
+  return createClient({ token }).post('/internal/plans/assign', { plan: planKey });
+}
+
+/**
+ * GET /api/v1/internal/plans/current
+ * @param {string} token
+ */
+function getCurrentPlan(token) {
+  return createClient({ token }).get('/internal/plans/current');
 }
 
 module.exports = {
@@ -296,4 +313,7 @@ module.exports = {
   disableDomain,
   enableFeature,
   disableFeature,
+  // Plans — management
+  assignPlan,
+  getCurrentPlan,
 };

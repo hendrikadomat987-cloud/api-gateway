@@ -33,11 +33,13 @@ export async function featureRoutes(app: FastifyInstance): Promise<void> {
       const verbose  = (request.query as Record<string, string>).verbose === 'true';
 
       if (verbose) {
-        const [features, domains] = await Promise.all([
+        const [features, domains, planRow] = await Promise.all([
           featureService.getTenantFeaturesVerbose(tenantId),
           featureService.getTenantDomainsVerbose(tenantId),
+          featureService.getCurrentPlan(tenantId),
         ]);
-        return reply.send({ success: true, data: { features, domains } });
+        const plan = planRow ? { key: planRow.plan_key, name: planRow.plan_name } : null;
+        return reply.send({ success: true, data: { features, domains, plan } });
       }
 
       // Sequential — getTenantFeatures populates the cache (features + domains
