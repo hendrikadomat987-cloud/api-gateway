@@ -5,6 +5,7 @@ import type { VoiceContext, ToolInput, ToolResult } from '../../../types/voice.j
 import { featureService } from '../../features/services/feature.service.js';
 import { getRequiredFeature } from './tool-feature-map.js';
 import { usageService } from '../../usage/services/usage.service.js';
+import { logRuntimeEvent } from '../../observability/event-logger.js';
 
 // ── Booking tools ─────────────────────────────────────────────────────────────
 
@@ -82,6 +83,21 @@ const TOOL_REGISTRY: Record<string, Record<string, ToolHandler>> = {
   salon:      SALON_TOOLS,
 };
 
+// Per-tool execution timeout.  Tools that hang longer than this are
+// treated as failures so the voice response is never held indefinitely.
+const TOOL_TIMEOUT_MS = 8_000;
+
+// ── Timeout helper ────────────────────────────────────────────────────────────
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Tool '${label}' timed out after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 // ── Public dispatch ───────────────────────────────────────────────────────────
 
 /**
@@ -92,7 +108,14 @@ const TOOL_REGISTRY: Record<string, Record<string, ToolHandler>> = {
  *   1. Track check — is the tool registered for this track at all?
  *   2. Feature check — does the tenant have the required feature enabled?
  *   3. Limit check  — has the tenant exceeded their usage limit for this feature?
- *   4. Tool execution + usage tracking on success
+ *   4. Tool execution (with timeout) + usage tracking on success
+ *
+ * Observability:
+ *   Every gate decision and execution outcome is logged to voice_runtime_events.
+ *   Logging is fire-and-forget: it never blocks or fails the response.
+ *
+ * trace_id is read automatically from AsyncLocalStorage (set by the webhook
+ * controller).  The session.id is used as an additional correlation key.
  */
 export async function dispatchTools(
   context: VoiceContext,
@@ -122,6 +145,15 @@ export async function dispatchTools(
       // Layer 2: feature-level gate
       const requiredFeature = getRequiredFeature(tool.name, context.track);
       if (requiredFeature && !enabledFeatures.has(requiredFeature)) {
+        logRuntimeEvent({
+          tenantId:    context.tenantId,
+          traceId:     context.session.id,
+          eventType:   'feature.blocked',
+          toolName:    tool.name,
+          featureKey:  requiredFeature,
+          result:      'blocked',
+          payload:     { track: context.track },
+        });
         return {
           name:    tool.name,
           success: false,
@@ -133,6 +165,16 @@ export async function dispatchTools(
       if (requiredFeature) {
         const limitCheck = await usageService.checkLimit(context.tenantId, requiredFeature);
         if (!limitCheck.allowed) {
+          logRuntimeEvent({
+            tenantId:    context.tenantId,
+            traceId:     context.session.id,
+            eventType:   'limit.blocked',
+            toolName:    tool.name,
+            featureKey:  requiredFeature,
+            result:      'blocked',
+            errorCode:   'LIMIT_EXCEEDED',
+            payload:     { current: limitCheck.current, limit: limitCheck.limit },
+          });
           return {
             name:    tool.name,
             success: false,
@@ -145,15 +187,30 @@ export async function dispatchTools(
             },
           };
         }
+        logRuntimeEvent({
+          tenantId:    context.tenantId,
+          traceId:     context.session.id,
+          eventType:   'limit.allowed',
+          toolName:    tool.name,
+          featureKey:  requiredFeature,
+          result:      'allowed',
+          payload:     { current: limitCheck.current, limit: limitCheck.limit },
+        });
       }
 
-      // Layer 4: execute
+      // Layer 4: execute with timeout guard
+      const startMs = Date.now();
       try {
-        const result = await handler(context, tool.arguments);
+        const result = await withTimeout(
+          handler(context, tool.arguments),
+          TOOL_TIMEOUT_MS,
+          tool.name,
+        );
+        const latencyMs = Date.now() - startMs;
 
         // Track usage after successful execution (non-fatal on error)
         if (requiredFeature) {
-          await usageService.track(
+          usageService.track(
             context.tenantId,
             requiredFeature,
             'tool_call',
@@ -162,10 +219,37 @@ export async function dispatchTools(
           ).catch(() => undefined);
         }
 
+        logRuntimeEvent({
+          tenantId:    context.tenantId,
+          traceId:     context.session.id,
+          eventType:   'tool.success',
+          toolName:    tool.name,
+          featureKey:  requiredFeature ?? undefined,
+          result:      'success',
+          latencyMs,
+        });
+
         return { name: tool.name, success: true, result };
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Tool execution failed';
-        await updateSession(context.tenantId, context.session.id, { status: 'failed' }).catch(() => undefined);
+        const latencyMs = Date.now() - startMs;
+        const message   = err instanceof Error ? err.message : 'Tool execution failed';
+        const isTimeout = message.includes('timed out');
+
+        logRuntimeEvent({
+          tenantId:    context.tenantId,
+          traceId:     context.session.id,
+          eventType:   isTimeout ? 'tool.timeout' : 'tool.error',
+          toolName:    tool.name,
+          featureKey:  requiredFeature ?? undefined,
+          result:      'error',
+          errorCode:   isTimeout ? 'TOOL_TIMEOUT' : 'TOOL_ERROR',
+          latencyMs,
+          payload:     { message },
+        });
+
+        // Update session status to 'failed' (non-fatal on error)
+        updateSession(context.tenantId, context.session.id, { status: 'failed' }).catch(() => undefined);
+
         return { name: tool.name, success: false, error: message };
       }
     }),

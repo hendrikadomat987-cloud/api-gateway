@@ -32,6 +32,12 @@
 //   Usage
 //     GET    /tenants/:id/usage            — current-period usage with limits
 //     POST   /tenants/:id/usage/reset      — reset counters     { period_start? }
+//
+//   Billing (Phase 5A — read-only admin view)
+//     GET    /tenants/:id/billing          — Stripe customer + subscription state
+//
+//   Insights (Phase 6 — observability)
+//     GET    /tenants/:id/insights         — recent events, error rate, feature usage, limit hits
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { makeAdminAuth } from '../middleware/adminAuth.js';
@@ -61,6 +67,13 @@ import {
 } from '../modules/usage/repositories/usage.repository.js';
 import { getLimitType } from '../modules/usage/services/usage.service.js';
 import { NotFoundError, ValidationError } from '../errors/index.js';
+import { getCustomer, getSubscriptionByTenant } from '../modules/billing/repositories/billing.repository.js';
+import {
+  getRecentEvents,
+  getErrorRate,
+  getTopFeatures,
+  getLimitHits,
+} from '../modules/observability/insights.repository.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PERIOD_RE = /^\d{4}-\d{2}-01$/;
@@ -371,6 +384,62 @@ export async function adminRoutes(
           tenant_id: tenantId,
           plan:      detail.plan,
           usage:     detail.usage,
+        },
+      });
+    },
+  );
+
+  // ── GET /tenants/:id/billing ──────────────────────────────────────────────
+  // Returns billing customer and subscription state for the tenant.
+
+  app.get(
+    '/api/v1/internal/admin/tenants/:id/billing',
+    { preHandler },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = assertUuid((request.params as Record<string, unknown>).id, 'id');
+      const [customer, subscription] = await Promise.all([
+        getCustomer(tenantId),
+        getSubscriptionByTenant(tenantId),
+      ]);
+      return reply.send({
+        success: true,
+        data: {
+          tenant_id:              tenantId,
+          stripe_customer_id:     customer?.stripe_customer_id    ?? null,
+          stripe_subscription_id: subscription?.stripe_subscription_id ?? null,
+          stripe_price_id:        subscription?.stripe_price_id   ?? null,
+          status:                 subscription?.status            ?? null,
+          current_period_start:   subscription?.current_period_start ?? null,
+          current_period_end:     subscription?.current_period_end   ?? null,
+          cancel_at_period_end:   subscription?.cancel_at_period_end ?? null,
+        },
+      });
+    },
+  );
+
+  // ── GET /tenants/:id/insights ────────────────────────────────────────────
+  // Returns observability insights: recent runtime events, error rate (24h),
+  // most-used features, and limit-hit counts.
+
+  app.get(
+    '/api/v1/internal/admin/tenants/:id/insights',
+    { preHandler },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = assertUuid((request.params as Record<string, unknown>).id, 'id');
+      const [events, errorRate, topFeatures, limitHits] = await Promise.all([
+        getRecentEvents(tenantId),
+        getErrorRate(tenantId),
+        getTopFeatures(tenantId),
+        getLimitHits(tenantId),
+      ]);
+      return reply.send({
+        success: true,
+        data: {
+          tenant_id:    tenantId,
+          recent_events: events,
+          error_rate:   errorRate,
+          top_features: topFeatures,
+          limit_hits:   limitHits,
         },
       });
     },

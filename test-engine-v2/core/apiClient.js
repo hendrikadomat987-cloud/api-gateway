@@ -435,6 +435,53 @@ function adminResetUsage(token, tenantId, body = {}) {
   return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/usage/reset`, body);
 }
 
+/** GET /api/v1/internal/admin/tenants/:id/billing */
+function adminGetBilling(token, tenantId) {
+  return createAdminClient(token).get(`/internal/admin/tenants/${tenantId}/billing`);
+}
+
+/** GET /api/v1/internal/admin/tenants/:id/insights */
+function adminGetInsights(token, tenantId) {
+  return createAdminClient(token).get(`/internal/admin/tenants/${tenantId}/insights`);
+}
+
+// ── Billing API (tenant-facing) ────────────────────────────────────────────────
+//
+// All routes require a tenant JWT (same as other internal routes).
+
+/**
+ * POST /api/v1/internal/billing/customers/create
+ * @param {string} token - Tenant JWT
+ */
+function billingCreateCustomer(token) {
+  return createClient({ token }).post('/internal/billing/customers/create', {});
+}
+
+/**
+ * POST /api/v1/internal/billing/subscriptions/create
+ * @param {string} token  - Tenant JWT
+ * @param {string} plan   - Plan key (e.g. 'starter')
+ */
+function billingCreateSubscription(token, plan) {
+  return createClient({ token }).post('/internal/billing/subscriptions/create', { plan });
+}
+
+/**
+ * GET /api/v1/internal/billing/subscriptions/current
+ * @param {string} token - Tenant JWT
+ */
+function billingGetSubscription(token) {
+  return createClient({ token }).get('/internal/billing/subscriptions/current');
+}
+
+/**
+ * POST /api/v1/internal/billing/subscriptions/cancel
+ * @param {string} token - Tenant JWT
+ */
+function billingCancelSubscription(token) {
+  return createClient({ token }).post('/internal/billing/subscriptions/cancel', {});
+}
+
 module.exports = {
   ApiClient,
   createClient,
@@ -488,4 +535,13 @@ module.exports = {
   // Admin — usage
   adminGetUsage,
   adminResetUsage,
+  // Admin — billing
+  adminGetBilling,
+  // Admin — insights
+  adminGetInsights,
+  // Billing (tenant-facing)
+  billingCreateCustomer,
+  billingCreateSubscription,
+  billingGetSubscription,
+  billingCancelSubscription,
 };

@@ -20,6 +20,19 @@ const schema = z.object({
   N8N_BASE_URL: z.string().url('N8N_BASE_URL must be a valid URL'),
   N8N_WEBHOOK_SECRET: z.string().optional(),
   FORWARD_TIMEOUT_MS: z.coerce.number().int().min(100).default(5000),
+  // ── Admin API ───────────────────────────────────────────────────────────────
+  // When set, enables the /api/v1/internal/admin/* routes.
+  // Must be a long random secret (not a JWT).  Absent = admin routes disabled.
+  ADMIN_TOKEN: z.string().optional(),
+  // ── Stripe / Billing ────────────────────────────────────────────────────────
+  // Absent = billing endpoints return 503 BILLING_DISABLED.
+  STRIPE_SECRET_KEY:      z.string().optional(),
+  STRIPE_WEBHOOK_SECRET:  z.string().optional(),
+  // Price-ID → internal plan-key mapping.  Set to the Stripe price IDs that
+  // correspond to each plan tier.  Any price not mapped here is rejected.
+  STRIPE_PRICE_STARTER:     z.string().optional(),
+  STRIPE_PRICE_PRO:         z.string().optional(),
+  STRIPE_PRICE_ENTERPRISE:  z.string().optional(),
 });
 
 export type Config = z.infer<typeof schema>;

@@ -1,4 +1,5 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import { getTraceId } from '../lib/trace.js';
 
 // ── Error classes ─────────────────────────────────────────────────────────────
 
@@ -62,9 +63,10 @@ export class UpstreamClientError extends AppError {
 interface ErrorResponse {
   success: false;
   error: {
-    code: string;
-    message: string;
-    details?: unknown;
+    code:      string;
+    message:   string;
+    details?:  unknown;
+    trace_id?: string;
   };
   requestId: string;
 }
@@ -84,11 +86,18 @@ export function errorHandler(
     return;
   }
 
+  // trace_id is included in error responses when a trace context is active
+  // (i.e. inside a voice webhook call).  For non-voice HTTP routes the
+  // AsyncLocalStorage store is empty and getTraceId() returns 'untraced',
+  // in which case we omit the field to keep the response clean.
+  const rawTrace = getTraceId();
+  const traceField = rawTrace !== 'untraced' ? rawTrace : undefined;
+
   // Known AppError
   if (error instanceof AppError) {
     const body: ErrorResponse = {
       success: false,
-      error: { code: error.code, message: error.message, details: error.details },
+      error: { code: error.code, message: error.message, details: error.details, trace_id: traceField },
       requestId,
     };
     reply.status(error.statusCode).send(body);
@@ -100,7 +109,7 @@ export function errorHandler(
   if (fastifyError.statusCode === 400) {
     const body: ErrorResponse = {
       success: false,
-      error: { code: 'VALIDATION_ERROR', message: fastifyError.message },
+      error: { code: 'VALIDATION_ERROR', message: fastifyError.message, trace_id: traceField },
       requestId,
     };
     reply.status(400).send(body);
@@ -111,7 +120,7 @@ export function errorHandler(
   if (fastifyError.statusCode === 401) {
     const body: ErrorResponse = {
       success: false,
-      error: { code: 'UNAUTHORIZED', message: 'Unauthorized' },
+      error: { code: 'UNAUTHORIZED', message: 'Unauthorized', trace_id: traceField },
       requestId,
     };
     reply.status(401).send(body);
@@ -122,7 +131,7 @@ export function errorHandler(
   request.log.error({ err: error }, 'Unhandled error');
   const body: ErrorResponse = {
     success: false,
-    error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error' },
+    error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error', trace_id: traceField },
     requestId,
   };
   reply.status(500).send(body);

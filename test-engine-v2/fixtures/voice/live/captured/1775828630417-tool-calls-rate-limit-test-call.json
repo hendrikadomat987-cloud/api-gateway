@@ -1,0 +1,11 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "rate-limit-test-call",
+      "assistantId": "rate-limit-test-assistant-1775828630407",
+      "phoneNumberId": null
+    },
+    "toolCallList": []
+  }
+}

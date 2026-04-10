@@ -8,6 +8,8 @@ import { extractMessage } from '../../providers/vapi/vapi-adapter.js';
 import { verifyVapiSignature } from '../../providers/vapi/vapi-signature.js';
 import { InvalidProviderSignatureError } from '../../../../errors/voice-errors.js';
 import { serviceLogger } from '../../../../logger/index.js';
+import { traceStore } from '../../../../lib/trace.js';
+import { checkRateLimit } from '../../../observability/rate-limiter.js';
 
 const log = serviceLogger.child({ name: 'voice.webhook.vapi' });
 
@@ -20,6 +22,15 @@ const log = serviceLogger.child({ name: 'voice.webhook.vapi' });
  *     orchestration service via phone number or provider_agent_id.
  *   - verifyVapiSignature() is always called before any payload processing.
  *   - A missing rawBody is a hard failure — no silent bypass.
+ *
+ * Observability:
+ *   - request.id is set as the trace_id for the entire async call chain via
+ *     AsyncLocalStorage (traceStore).  All downstream event-logger calls pick
+ *     it up automatically without threading it through function signatures.
+ *
+ * Rate limiting:
+ *   - 60 requests per minute per assistant (= per tenant).
+ *   - Returns 429 RATE_LIMITED before any processing when exceeded.
  */
 export function createVapiWebhookController(vapiWebhookSecret: string): RouteHandler {
   return async function vapiWebhookController(
@@ -76,17 +87,30 @@ export function createVapiWebhookController(vapiWebhookSecret: string): RouteHan
     const payload = validateVapiPayload(request.body);
     const message = extractMessage(payload);
 
+    // ── Rate limit — per assistant (1:1 with tenant) ───────────────────────────
+    const rateLimitKey = message.call.assistantId ?? message.call.phoneNumberId ?? 'unknown';
+    if (!checkRateLimit(rateLimitKey)) {
+      return reply.status(429).send({
+        success: false,
+        error:   { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' },
+      });
+    }
+
     log.info(
       {
-        type: message.type,
+        type:          message.type,
         providerCallId: message.call.id,
-        assistantId: message.call.assistantId,
+        assistantId:   message.call.assistantId,
         phoneNumberId: message.call.phoneNumberId,
+        traceId:       request.id,
       },
       '[voice:webhook:incoming]',
     );
 
-    const result = await handleVapiMessage(message);
+    // ── Trace propagation — binds request.id to the entire async call chain ───
+    const result = await traceStore.run(request.id as string, () =>
+      handleVapiMessage(message),
+    );
 
     reply.status(200).send(result);
   };
