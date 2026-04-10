@@ -16,6 +16,7 @@ import { featureRoutes } from './routes/features.js';
 import { featuresInternalRoutes } from './routes/features-internal.js';
 import { plansInternalRoutes } from './routes/plans-internal.js';
 import { usageRoutes } from './routes/usage.js';
+import { adminRoutes } from './routes/admin.js';
 
 export interface BuildAppOptions {
   config: Config;
@@ -108,6 +109,7 @@ const app = Fastify({
   await app.register(featuresInternalRoutes);
   await app.register(plansInternalRoutes);
   await app.register(usageRoutes);
+  await app.register(adminRoutes, { adminToken: config.ADMIN_TOKEN });
 
   // 404 fallback
   app.setNotFoundHandler((_request, reply) => {

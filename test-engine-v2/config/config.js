@@ -16,6 +16,10 @@ const tenantSalon2   = process.env.TOKEN_TENANT_SALON_2     || '';
 // Generate: a JWT with organization_id = '44444444-4444-4444-4444-444444444444'.
 // VAPI webhook tests for this tenant do NOT require this token.
 const tenantFeatureGate = process.env.TOKEN_FEATURE_GATE_TENANT || '';
+// Optional — static opaque Bearer secret for /internal/admin/* endpoints.
+// Generate: openssl rand -hex 32  (store in ADMIN_TOKEN on the server too).
+// Tests that require admin access are skipped when this is absent.
+const admin = process.env.TOKEN_ADMIN || '';
 
 // ── Hard validation for required vars ─────────────────────────────────────────
 
@@ -55,6 +59,11 @@ const config = {
      * VAPI webhook tests for Layer-2 gating work without this token.
      */
     tenantFeatureGate,
+    /**
+     * Static opaque Bearer secret for /internal/admin/* endpoints.
+     * Must match ADMIN_TOKEN on the server.  Tests skip when absent.
+     */
+    admin,
     /** An expired JWT — used to verify 401 TOKEN_EXPIRED responses. */
     expired: process.env.TOKEN_EXPIRED || 'expired-token',
     /** A syntactically invalid string — used to verify 401 INVALID_TOKEN. */

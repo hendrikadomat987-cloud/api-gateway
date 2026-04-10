@@ -337,10 +337,109 @@ function deleteUsageOverride(token, featureKey, limitType = 'tool_calls_per_mont
   });
 }
 
+// ── Admin API ─────────────────────────────────────────────────────────────────
+//
+// All admin endpoints are under /api/v1/internal/admin/.
+// Authentication uses a static ADMIN_TOKEN Bearer secret (not a JWT).
+
+/**
+ * Factory — creates a pre-configured admin client.
+ * Reads TOKEN_ADMIN from the environment by default.
+ */
+function createAdminClient(token) {
+  return createClient({ token: token !== undefined ? token : (process.env.TOKEN_ADMIN || '') });
+}
+
+/** GET /api/v1/internal/admin/tenants */
+function adminListTenants(token) {
+  return createAdminClient(token).get('/internal/admin/tenants');
+}
+
+/** GET /api/v1/internal/admin/tenants/:id */
+function adminGetTenant(token, tenantId) {
+  return createAdminClient(token).get(`/internal/admin/tenants/${tenantId}`);
+}
+
+/** POST /api/v1/internal/admin/tenants */
+function adminUpsertTenant(token, body) {
+  return createAdminClient(token).post('/internal/admin/tenants', body);
+}
+
+/** GET /api/v1/internal/admin/plans */
+function adminListPlans(token) {
+  return createAdminClient(token).get('/internal/admin/plans');
+}
+
+/** GET /api/v1/internal/admin/plans/:key */
+function adminGetPlan(token, planKey) {
+  return createAdminClient(token).get(`/internal/admin/plans/${planKey}`);
+}
+
+/** POST /api/v1/internal/admin/tenants/:id/plan  { plan } */
+function adminAssignPlan(token, tenantId, planKey) {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/plan`, { plan: planKey });
+}
+
+/** POST /api/v1/internal/admin/tenants/:id/features/enable  { feature } */
+function adminEnableFeature(token, tenantId, featureKey) {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/features/enable`, { feature: featureKey });
+}
+
+/** POST /api/v1/internal/admin/tenants/:id/features/disable  { feature } */
+function adminDisableFeature(token, tenantId, featureKey) {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/features/disable`, { feature: featureKey });
+}
+
+/** POST /api/v1/internal/admin/tenants/:id/domains/enable  { domain } */
+function adminEnableDomain(token, tenantId, domainKey) {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/domains/enable`, { domain: domainKey });
+}
+
+/** POST /api/v1/internal/admin/tenants/:id/domains/disable  { domain } */
+function adminDisableDomain(token, tenantId, domainKey) {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/domains/disable`, { domain: domainKey });
+}
+
+/** GET /api/v1/internal/admin/tenants/:id/limits */
+function adminGetLimits(token, tenantId) {
+  return createAdminClient(token).get(`/internal/admin/tenants/${tenantId}/limits`);
+}
+
+/**
+ * POST /api/v1/internal/admin/tenants/:id/limits
+ * { feature_key, limit_type?, limit_value }
+ */
+function adminSetLimit(token, tenantId, featureKey, limitValue, limitType = 'tool_calls_per_month') {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/limits`, {
+    feature_key: featureKey,
+    limit_type:  limitType,
+    limit_value: limitValue,
+  });
+}
+
+/** DELETE /api/v1/internal/admin/tenants/:id/limits  { feature_key, limit_type? } */
+function adminDeleteLimit(token, tenantId, featureKey, limitType = 'tool_calls_per_month') {
+  return createAdminClient(token).delete(`/internal/admin/tenants/${tenantId}/limits`, {
+    feature_key: featureKey,
+    limit_type:  limitType,
+  });
+}
+
+/** GET /api/v1/internal/admin/tenants/:id/usage */
+function adminGetUsage(token, tenantId) {
+  return createAdminClient(token).get(`/internal/admin/tenants/${tenantId}/usage`);
+}
+
+/** POST /api/v1/internal/admin/tenants/:id/usage/reset  { period_start? } */
+function adminResetUsage(token, tenantId, body = {}) {
+  return createAdminClient(token).post(`/internal/admin/tenants/${tenantId}/usage/reset`, body);
+}
+
 module.exports = {
   ApiClient,
   createClient,
   defaultClient,
+  createAdminClient,
   // Voice
   sendVoiceWebhook,
   sendVoiceWebhookSigned,
@@ -369,4 +468,24 @@ module.exports = {
   resetUsageCounters,
   setUsageOverride,
   deleteUsageOverride,
+  // Admin — tenants
+  adminListTenants,
+  adminGetTenant,
+  adminUpsertTenant,
+  // Admin — plans
+  adminListPlans,
+  adminGetPlan,
+  // Admin — tenant management
+  adminAssignPlan,
+  adminEnableFeature,
+  adminDisableFeature,
+  adminEnableDomain,
+  adminDisableDomain,
+  // Admin — limits
+  adminGetLimits,
+  adminSetLimit,
+  adminDeleteLimit,
+  // Admin — usage
+  adminGetUsage,
+  adminResetUsage,
 };

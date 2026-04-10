@@ -59,6 +59,7 @@
     "test:voice:salon:hardening-db": "jest services/voice/voice-salon-hardening-db",
     "test:voice:salon": "jest services/voice/voice-salon-happy-path services/voice/voice-salon-search-db services/voice/voice-salon-booking-db services/voice/voice-salon-knowledge-db services/voice/voice-salon-conversation-db services/voice/voice-salon-robustness-db services/voice/voice-salon-hardening-db",
     "test:voice:usage": "jest services/voice/voice-usage-tracking",
+    "test:voice:admin": "jest services/voice/voice-admin",
     "test:voice:live-shape": "jest services/voice/voice-live-webhook-shape",
     "test:voice:live-replay": "jest services/voice/voice-live-payload-replay",
     "test:voice:live": "jest services/voice/voice-live-webhook-shape services/voice/voice-live-payload-replay",
