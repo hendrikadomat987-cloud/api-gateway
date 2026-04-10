@@ -40,13 +40,12 @@ export interface TenantDomainRow {
 export async function getTenantFeatureKeys(tenantId: string): Promise<string[]> {
   return withTenant(tenantId, async (client) => {
     const result = await client.query<{ feature_key: string }>(
-      `SELECT f.feature_key
+      `SELECT f.key AS feature_key
        FROM tenant_features tf
        JOIN features f ON f.id = tf.feature_id
-       WHERE tf.tenant_id  = $1
-         AND tf.is_enabled = true
-         AND f.is_active   = true
-       ORDER BY f.feature_key`,
+       WHERE tf.tenant_id = $1
+         AND tf.enabled   = true
+       ORDER BY f.key`,
       [tenantId],
     );
     return result.rows.map((r) => r.feature_key);
@@ -64,10 +63,9 @@ export async function hasTenantFeature(tenantId: string, featureKey: string): Pr
          SELECT 1
          FROM tenant_features tf
          JOIN features f ON f.id = tf.feature_id
-         WHERE tf.tenant_id    = $1
-           AND f.feature_key   = $2
-           AND tf.is_enabled   = true
-           AND f.is_active     = true
+         WHERE tf.tenant_id = $1
+           AND f.key        = $2
+           AND tf.enabled   = true
        ) AS exists`,
       [tenantId, featureKey],
     );
@@ -81,13 +79,12 @@ export async function hasTenantFeature(tenantId: string, featureKey: string): Pr
 export async function getTenantDomainKeys(tenantId: string): Promise<string[]> {
   return withTenant(tenantId, async (client) => {
     const result = await client.query<{ domain_key: string }>(
-      `SELECT d.domain_key
+      `SELECT d.key AS domain_key
        FROM tenant_domains td
        JOIN domains d ON d.id = td.domain_id
        WHERE td.tenant_id  = $1
-         AND td.is_enabled = true
-         AND d.is_active   = true
-       ORDER BY d.domain_key`,
+         AND td.enabled_at IS NOT NULL
+       ORDER BY d.key`,
       [tenantId],
     );
     return result.rows.map((r) => r.domain_key);

@@ -71,7 +71,7 @@ export function buildToolCallsResponse(
   return {
     results: results.map((r) => ({
       toolCallId: r.tool_call_id ?? '',
-      result: r.success ? r.result : { error: r.error ?? 'Tool execution failed' },
+      result: r.success ? r.result : { success: false, error: r.error ?? 'Tool execution failed' },
     })),
   };
 }
