@@ -304,5 +304,5 @@ export interface ToolResult {
   name: string;
   success: boolean;
   result?: unknown;
-  error?: string;
+  error?: string | Record<string, unknown>;
 }

@@ -4,6 +4,7 @@ import { updateSession } from '../repositories/voice-sessions.repository.js';
 import type { VoiceContext, ToolInput, ToolResult } from '../../../types/voice.js';
 import { featureService } from '../../features/services/feature.service.js';
 import { getRequiredFeature } from './tool-feature-map.js';
+import { usageService } from '../../usage/services/usage.service.js';
 
 // ── Booking tools ─────────────────────────────────────────────────────────────
 
@@ -90,7 +91,8 @@ const TOOL_REGISTRY: Record<string, Record<string, ToolHandler>> = {
  * Gating order:
  *   1. Track check — is the tool registered for this track at all?
  *   2. Feature check — does the tenant have the required feature enabled?
- *   3. Tool execution
+ *   3. Limit check  — has the tenant exceeded their usage limit for this feature?
+ *   4. Tool execution + usage tracking on success
  */
 export async function dispatchTools(
   context: VoiceContext,
@@ -127,9 +129,39 @@ export async function dispatchTools(
         };
       }
 
-      // Layer 3: execute
+      // Layer 3: usage limit gate
+      if (requiredFeature) {
+        const limitCheck = await usageService.checkLimit(context.tenantId, requiredFeature);
+        if (!limitCheck.allowed) {
+          return {
+            name:    tool.name,
+            success: false,
+            error: {
+              code:    'LIMIT_EXCEEDED',
+              message: `Usage limit reached for feature '${requiredFeature}'.`,
+              feature: requiredFeature,
+              current: limitCheck.current,
+              limit:   limitCheck.limit,
+            },
+          };
+        }
+      }
+
+      // Layer 4: execute
       try {
         const result = await handler(context, tool.arguments);
+
+        // Track usage after successful execution (non-fatal on error)
+        if (requiredFeature) {
+          await usageService.track(
+            context.tenantId,
+            requiredFeature,
+            'tool_call',
+            1,
+            { tool: tool.name, sessionId: context.session.id },
+          ).catch(() => undefined);
+        }
+
         return { name: tool.name, success: true, result };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Tool execution failed';

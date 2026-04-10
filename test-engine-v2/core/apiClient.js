@@ -81,7 +81,7 @@ class ApiClient {
   get(path, params)               { return this._request('GET',    path, undefined, params); }
   post(path, data, extraHeaders)  { return this._request('POST',   path, data, undefined, extraHeaders); }
   put(path, data)                 { return this._request('PUT',    path, data); }
-  delete(path)                    { return this._request('DELETE', path); }
+  delete(path, data)              { return this._request('DELETE', path, data); }
 }
 
 /**
@@ -290,6 +290,53 @@ function getCurrentPlan(token) {
   return createClient({ token }).get('/internal/plans/current');
 }
 
+/**
+ * GET /api/v1/usage/current
+ * @param {string} token
+ */
+function getUsageCurrent(token) {
+  return createClient({ token }).get('/usage/current');
+}
+
+/**
+ * POST /api/v1/internal/usage/reset
+ * @param {string} token
+ * @param {object} [body]  { period_start?: string }
+ */
+function resetUsageCounters(token, body = {}) {
+  return createClient({ token }).post('/internal/usage/reset', body);
+}
+
+/**
+ * POST /api/v1/internal/usage/overrides
+ * Sets a tenant limit override.
+ * @param {string} token
+ * @param {string} featureKey
+ * @param {number|null} limitValue  null = explicitly unlimited
+ * @param {string} [limitType]      defaults to 'tool_calls_per_month'
+ */
+function setUsageOverride(token, featureKey, limitValue, limitType = 'tool_calls_per_month') {
+  return createClient({ token }).post('/internal/usage/overrides', {
+    feature_key: featureKey,
+    limit_type:  limitType,
+    limit_value: limitValue,
+  });
+}
+
+/**
+ * DELETE /api/v1/internal/usage/overrides
+ * Removes a tenant limit override (plan limit or unlimited takes effect).
+ * @param {string} token
+ * @param {string} featureKey
+ * @param {string} [limitType]
+ */
+function deleteUsageOverride(token, featureKey, limitType = 'tool_calls_per_month') {
+  return createClient({ token }).delete('/internal/usage/overrides', {
+    feature_key: featureKey,
+    limit_type:  limitType,
+  });
+}
+
 module.exports = {
   ApiClient,
   createClient,
@@ -316,4 +363,10 @@ module.exports = {
   // Plans — management
   assignPlan,
   getCurrentPlan,
+  // Usage — read
+  getUsageCurrent,
+  // Usage — management
+  resetUsageCounters,
+  setUsageOverride,
+  deleteUsageOverride,
 };

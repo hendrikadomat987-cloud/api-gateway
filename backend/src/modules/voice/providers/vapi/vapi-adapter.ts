@@ -66,7 +66,7 @@ export function extractToolInputs(message: VapiWebhookMessage): ToolInput[] {
  * Builds the VAPI-shaped response body for tool call results.
  */
 export function buildToolCallsResponse(
-  results: Array<{ tool_call_id?: string; name: string; success: boolean; result?: unknown; error?: string }>,
+  results: Array<{ tool_call_id?: string; name: string; success: boolean; result?: unknown; error?: string | Record<string, unknown> }>,
 ): import('./vapi-types.js').VapiToolCallsResponse {
   return {
     results: results.map((r) => ({
