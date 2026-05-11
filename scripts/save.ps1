@@ -24,6 +24,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Creating/updating Git tag..."
 git tag -d $GitTag 2>$null
+$global:LASTEXITCODE = 0
 git tag $GitTag
 
 Write-Host "Creating DB + n8n backup..."
