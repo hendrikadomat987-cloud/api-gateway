@@ -106,6 +106,7 @@
       "position": [-720, 160],
       "id": "062511d1-b1ba-425b-888b-8bc71af6161e",
       "name": "DB Insert",
+      "onError": "continueErrorOutput",
       "credentials": {
         "postgres": {
           "id": "Enm2PEWvhVMtE5CI",
@@ -170,6 +171,28 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [-720, 352]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json.error && ($json.error.message || String($json.error))) || 'Database error';\nconst lower = raw.toLowerCase();\nlet code = 'DB_ERROR'; let message = raw;\nif (lower.includes('unique') || lower.includes('duplicate') || lower.includes('already exists')) {\n  code = 'VALIDATION_ERROR'; message = 'A customer with this phone or email already exists';\n} else if (lower.includes('foreign key') || lower.includes('violates') || lower.includes('fkey')) {\n  code = 'VALIDATION_ERROR'; message = 'Invalid tenant_id';\n}\nreturn [{ json: { code, message } }];"
+      },
+      "id": "cust0009-0000-0000-0000-000000000009",
+      "name": "Parse DB Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-480, 352]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: { code: $json.code, message: $json.message } } }}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "cust0010-0000-0000-0000-000000000010",
+      "name": "Respond DB Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-240, 352]
     }
   ],
   "pinData": {},
@@ -190,10 +213,16 @@
       ]
     },
     "DB Insert": {
-      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }],
+        [{ "node": "Parse DB Error", "type": "main", "index": 0 }]
+      ]
     },
     "Format Response": {
       "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    },
+    "Parse DB Error": {
+      "main": [[{ "node": "Respond DB Error", "type": "main", "index": 0 }]]
     }
   },
   "active": true,

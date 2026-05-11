@@ -24,6 +24,7 @@ const config = require('../../config/config');
 const {
   sendVoiceWebhook,
   listVoiceCalls,
+  pollForCall,
   getVoiceCall,
   getVoiceCallEvents,
 } = require('../../core/apiClient');
@@ -81,14 +82,10 @@ describe('voice / cross-tenant / isolation (restaurant ↔ salon)', () => {
     }
 
     // Resolve internal IDs via their respective tenant tokens
-    const listR = await listVoiceCalls(TOKEN_RESTAURANT);
-    const callR = listR.data?.data?.find((c) => c.provider_call_id === RESTAURANT_CALL_ID);
-    if (!callR) throw new Error(`Setup: restaurant call not found in list: ${RESTAURANT_CALL_ID}`);
+    const callR = await pollForCall(TOKEN_RESTAURANT, RESTAURANT_CALL_ID);
     restaurantInternalId = callR.id;
 
-    const listS = await listVoiceCalls(TOKEN_SALON);
-    const callS = listS.data?.data?.find((c) => c.provider_call_id === SALON_CALL_ID);
-    if (!callS) throw new Error(`Setup: salon call not found in list: ${SALON_CALL_ID}`);
+    const callS = await pollForCall(TOKEN_SALON, SALON_CALL_ID);
     salonInternalId = callS.id;
   });
 

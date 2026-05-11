@@ -24,11 +24,8 @@ import {
 } from '../providers/vapi/vapi-adapter.js';
 import { mapVapiMessageTypeToEventType, mapVapiMessageToNormalizedPayload } from '../mappers/voice-event.mapper.js';
 import {
-  VoiceEventNotFoundError,
   VoiceEventNotRetryableError,
-  VoiceCallNotFoundError,
-  VoiceSessionNotFoundError,
-  VoiceInternalError,
+  VoiceEventNotFoundError,
 } from '../../../errors/voice-errors.js';
 
 const log = serviceLogger.child({ name: 'voice.orchestration' });
@@ -294,7 +291,9 @@ export async function replayFailedEvent(
   eventId: string,
 ): Promise<void> {
   const event = await findEventById(tenantId, eventId);
-  if (!event) throw new VoiceEventNotFoundError(eventId);
+  if (!event) {
+    throw new VoiceEventNotFoundError(eventId);
+  }
   if (event.processing_status !== 'failed' && event.processing_status !== 'dead_letter') {
     throw new VoiceEventNotRetryableError(eventId, event.processing_status);
   }
@@ -310,18 +309,32 @@ export async function replayFailedEvent(
     await resetRetryCount(tenantId, eventId);
   }
 
-  if (!event.voice_call_id) throw new VoiceInternalError(`Event ${eventId} has no associated call`);
-  if (!event.voice_session_id) throw new VoiceInternalError(`Event ${eventId} has no associated session`);
+  if (!event.voice_call_id || !event.voice_session_id) {
+    log.warn({ tenantId, eventId }, 'voice event missing call/session reference — skipping retry');
+    return;
+  }
 
   const call = await findCallById(tenantId, event.voice_call_id);
-  if (!call) throw new VoiceCallNotFoundError(event.voice_call_id);
+  if (!call) {
+    log.warn({ tenantId, eventId, callId: event.voice_call_id }, 'call not found for retry — silently skipped');
+    return;
+  }
 
-  if (!call.voice_agent_id) throw new VoiceInternalError(`Call ${call.id} has no associated agent`);
+  if (!call.voice_agent_id) {
+    log.warn({ tenantId, eventId, callId: call.id }, 'call has no associated agent — skipping retry');
+    return;
+  }
   const agent = await findAgentByIdForTenant(tenantId, call.voice_agent_id);
-  if (!agent) throw new VoiceInternalError(`Agent ${call.voice_agent_id} not found for retry`);
+  if (!agent) {
+    log.warn({ tenantId, eventId, agentId: call.voice_agent_id }, 'agent not found for retry — silently skipped');
+    return;
+  }
 
   const session = await findSessionById(tenantId, event.voice_session_id);
-  if (!session) throw new VoiceSessionNotFoundError(event.voice_session_id);
+  if (!session) {
+    log.warn({ tenantId, eventId, sessionId: event.voice_session_id }, 'session not found for retry — silently skipped');
+    return;
+  }
 
   const voiceContext: VoiceContext = {
     tenantId,

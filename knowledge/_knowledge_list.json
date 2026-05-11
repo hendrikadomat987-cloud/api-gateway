@@ -74,18 +74,12 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "resp-success", "name": "success", "value": true, "type": "boolean" },
-            { "id": "resp-data", "name": "data", "value": "={{ $input.all().map(item => item.json) }}", "type": "json" }
-          ]
-        },
-        "options": {}
+        "jsCode": "// RLS may return 0 rows — always output exactly 1 item so the response node fires.\n// Collect all items (empty array if none matched).\nconst items = $input.all();\nconst data = items.map(item => item.json);\nreturn [{ json: { success: true, data } }];"
       },
-      "id": "c0160006-0000-0000-0000-000000000006",
-      "name": "Format Response",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "id": "c0160009-0000-0000-0000-000000000009",
+      "name": "Normalize List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [-400, 160]
     },
     {
@@ -119,8 +113,8 @@
     "Set Fields": { "main": [[{ "node": "Validate", "type": "main", "index": 0 }]] },
     "Validate": { "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]] },
     "Is Valid?": { "main": [[{ "node": "DB List", "type": "main", "index": 0 }], [{ "node": "Respond Error", "type": "main", "index": 0 }]] },
-    "DB List": { "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]] },
-    "Format Response": { "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]] }
+    "DB List": { "main": [[{ "node": "Normalize List", "type": "main", "index": 0 }]] },
+    "Normalize List": { "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]] }
   },
   "active": true,
   "settings": { "executionOrder": "v1", "binaryMode": "separate", "availableInMCP": false },

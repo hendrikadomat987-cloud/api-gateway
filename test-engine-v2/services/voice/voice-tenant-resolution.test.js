@@ -25,6 +25,7 @@ const config = require('../../config/config');
 const {
   sendVoiceWebhook,
   listVoiceCalls,
+  pollForCall,
   getVoiceCall,
   getCallSession,
 } = require('../../core/apiClient');
@@ -66,9 +67,7 @@ describe('voice / tenant-resolution', () => {
         );
       }
 
-      const list = await listVoiceCalls(TOKEN_SALON);
-      const call = list.data?.data?.find((c) => c.provider_call_id === CALL_ID);
-      if (!call) throw new Error(`Setup A: salon call not found in list: ${CALL_ID}`);
+      const call = await pollForCall(TOKEN_SALON, CALL_ID);
       callId = call.id;
     });
 
@@ -147,9 +146,7 @@ describe('voice / tenant-resolution', () => {
         );
       }
 
-      const list = await listVoiceCalls(TOKEN_RESTAURANT);
-      const call = list.data?.data?.find((c) => c.provider_call_id === CALL_ID);
-      if (!call) throw new Error(`Setup B: restaurant call not found in list: ${CALL_ID}`);
+      const call = await pollForCall(TOKEN_RESTAURANT, CALL_ID);
       callId = call.id;
     });
 

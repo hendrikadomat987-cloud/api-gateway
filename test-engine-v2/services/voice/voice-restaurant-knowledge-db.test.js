@@ -23,7 +23,7 @@
 
 const config = require('../../config/config');
 
-const { sendVoiceWebhook, listVoiceCalls } = require('../../core/apiClient');
+const { sendVoiceWebhook, pollForCall } = require('../../core/apiClient');
 
 const {
   buildVapiStatusUpdate,
@@ -47,9 +47,7 @@ async function setupCall(callId) {
   if (res.status >= 300) {
     throw new Error(`Setup failed for ${callId}: ${res.status} ${JSON.stringify(res.data)}`);
   }
-  const list = await listVoiceCalls(TOKEN);
-  const call = list.data?.data?.find((c) => c.provider_call_id === callId);
-  if (!call) throw new Error(`Call not found after setup: ${callId}`);
+  const call = await pollForCall(TOKEN, callId);
   return call.id;
 }
 

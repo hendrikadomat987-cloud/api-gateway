@@ -11,7 +11,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-1520, 240],
+      "position": [
+        -1520,
+        240
+      ],
       "webhookId": "2782bbef-520e-42ff-9a5f-42d491637ce4"
     },
     {
@@ -38,7 +41,10 @@
       "name": "Set Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-1344, 240]
+      "position": [
+        -1344,
+        240
+      ]
     },
     {
       "parameters": {
@@ -48,7 +54,10 @@
       "name": "Validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1152, 240]
+      "position": [
+        -1152,
+        240
+      ]
     },
     {
       "parameters": {
@@ -78,7 +87,10 @@
       "name": "Is Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [-960, 240]
+      "position": [
+        -960,
+        240
+      ]
     },
     {
       "parameters": {
@@ -108,7 +120,10 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [-720, 240],
+      "position": [
+        -720,
+        240
+      ],
       "id": "915523c6-43b1-4c80-b356-ef8bc1fbac05",
       "name": "Has ID?"
     },
@@ -122,7 +137,10 @@
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [-496, 112],
+      "position": [
+        -496,
+        112
+      ],
       "id": "8af2bbbf-8694-4a38-83a4-c863e9b0872c",
       "name": "GET customer by ID",
       "credentials": {
@@ -142,7 +160,10 @@
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [-496, 368],
+      "position": [
+        -496,
+        368
+      ],
       "id": "a039316c-1f7f-457f-b1a6-ed4770e5a424",
       "name": "Get All Customers",
       "credentials": {
@@ -154,70 +175,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "ebc5aaf9-8f47-40c1-8fe9-9ec82330e513",
-              "leftValue": "={{ $input.all().length }}",
-              "rightValue": 0,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [-256, 112],
-      "id": "470b5a54-e081-4517-8783-838e2b50b072",
-      "name": "Customer found?"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [-32, 240],
-      "id": "7efcf4f4-d440-44d9-b417-711d1c6bff02",
-      "name": "Merge"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "resp-success",
-              "name": "success",
-              "value": true,
-              "type": "boolean"
-            },
-            {
-              "id": "resp-data",
-              "name": "data",
-              "value": "={{ $input.all().length === 1 ? $input.first().json : $input.all().map(item => item.json) }}",
-              "type": "json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "1896e04d-0fba-4c65-bd75-820a47d8e0cf",
-      "name": "Format Response",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [176, 240]
-    },
-    {
-      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { success: $json.success, data: $json.data } }}",
         "options": {}
@@ -226,7 +183,10 @@
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [368, 240]
+      "position": [
+        368,
+        240
+      ]
     },
     {
       "parameters": {
@@ -240,63 +200,152 @@
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [-720, 432]
+      "position": [
+        -720,
+        432
+      ]
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } } }}",
-        "options": {
-          "responseCode": 404
-        }
+        "jsCode": "// Single customer lookup — RLS may return 0 rows.\nconst items = $input.all();\nconst data = items.length > 0 ? items[0].json : null;\nreturn [{ json: { success: true, data } }];"
       },
-      "id": "09f9ba0c-eea9-44c5-b223-274de03b7f3a",
-      "name": "Respond Not Found",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [-32, -32]
+      "id": "cust-get-norm-id-0001-000000000001",
+      "name": "Normalize ID Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// List all customers — RLS may return 0 rows.\nconst items = $input.all();\nconst data = items.map(item => item.json);\nreturn [{ json: { success: true, data } }];"
+      },
+      "id": "cust-get-norm-list-0001-000000000002",
+      "name": "Normalize List Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        368
+      ]
     }
   ],
   "pinData": {},
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Set Fields", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Fields": {
-      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Validate": {
-      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Is Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Is Valid?": {
       "main": [
-        [{ "node": "Has ID?", "type": "main", "index": 0 }],
-        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Has ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Has ID?": {
       "main": [
-        [{ "node": "GET customer by ID", "type": "main", "index": 0 }],
-        [{ "node": "Get All Customers", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "GET customer by ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get All Customers",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "GET customer by ID": {
-      "main": [[{ "node": "Customer found?", "type": "main", "index": 0 }]]
-    },
-    "Customer found?": {
       "main": [
-        [{ "node": "Respond Not Found", "type": "main", "index": 0 }],
-        [{ "node": "Merge", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Normalize ID Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Get All Customers": {
-      "main": [[{ "node": "Merge", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize List Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Merge": {
-      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+    "Normalize ID Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Format Response": {
-      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    "Normalize List Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,

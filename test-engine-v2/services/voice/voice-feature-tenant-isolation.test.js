@@ -263,7 +263,7 @@ describe('voice / feature / tenant-isolation', () => {
 
   describe('G. Auth — missing token returns 401', () => {
     it('returns 401 with no Authorization header', async () => {
-      const res = await createClient({ token: '' }).get('/api/v1/features');
+      const res = await createClient({ token: '' }).get('/features');
       expect(res.status).toBe(401);
     });
   });

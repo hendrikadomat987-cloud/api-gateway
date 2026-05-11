@@ -11,7 +11,7 @@ const config = require('../../config/config');
 
 const {
   sendVoiceWebhook,
-  listVoiceCalls,
+  pollForCall,
   getCallSession,
   getVoiceSession,
   getVoiceCall,
@@ -46,17 +46,7 @@ describe('voice / session-discovery', () => {
       );
     }
 
-    const list = await listVoiceCalls(TOKEN);
-    if (list.status !== 200 || !list.data?.success) {
-      throw new Error(`Setup failed — GET /voice/calls returned ${list.status}`);
-    }
-    const call = list.data.data.find((c) => c.provider_call_id === PROVIDER_CALL_ID);
-    if (!call) {
-      throw new Error(
-        `Setup failed — call not found in list after webhook.\n` +
-        `provider_call_id: ${PROVIDER_CALL_ID}`,
-      );
-    }
+    const call = await pollForCall(TOKEN, PROVIDER_CALL_ID);
     internalCallId = call.id;
   });
 
@@ -91,9 +81,7 @@ describe('voice / session-discovery', () => {
       throw new Error(`Fallback setup — webhook rejected: ${JSON.stringify(webhookRes.data)}`);
     }
 
-    const list = await listVoiceCalls(TOKEN);
-    const call = list.data.data.find((c) => c.provider_call_id === fallbackCallId);
-    if (!call) throw new Error(`Fallback setup — call not found: ${fallbackCallId}`);
+    const call = await pollForCall(TOKEN, fallbackCallId);
 
     const discoveryRes = await getCallSession(TOKEN, call.id);
     const session      = expectSuccess(discoveryRes);
@@ -132,9 +120,7 @@ describe('voice / session-discovery', () => {
       throw new Error(`Handover setup — webhook rejected: ${JSON.stringify(webhookRes.data)}`);
     }
 
-    const list = await listVoiceCalls(TOKEN);
-    const call = list.data.data.find((c) => c.provider_call_id === handoverCallId);
-    if (!call) throw new Error(`Handover setup — call not found: ${handoverCallId}`);
+    const call = await pollForCall(TOKEN, handoverCallId);
 
     const discoveryRes = await getCallSession(TOKEN, call.id);
     const session      = expectSuccess(discoveryRes);

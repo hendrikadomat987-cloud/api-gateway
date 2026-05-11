@@ -42,7 +42,7 @@ async function createClient() {
   }
 
   const { Client } = require('pg');
-  const client = new Client({ connectionString: DB_URL });
+  const client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } });
   await client.connect();
   return client;
 }

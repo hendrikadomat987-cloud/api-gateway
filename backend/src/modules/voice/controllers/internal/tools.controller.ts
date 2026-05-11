@@ -2,7 +2,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { listToolInvocationsBySessionId } from '../../repositories/voice-tool-invocations.repository.js';
 import { findSessionById } from '../../repositories/voice-sessions.repository.js';
-import { VoiceSessionNotFoundError } from '../../../../errors/voice-errors.js';
 
 /**
  * GET /api/v1/voice/sessions/:id/tools
@@ -13,10 +12,10 @@ export async function listToolInvocationsHandler(
   reply: FastifyReply,
 ): Promise<void> {
   const session = await findSessionById(request.tenantId, request.params.id);
-  if (!session || session.tenant_id !== request.tenantId) {
-    throw new VoiceSessionNotFoundError(request.params.id);
+  if (!session) {
+    return reply.send({ success: true, data: [] });
   }
 
   const invocations = await listToolInvocationsBySessionId(request.tenantId, session.id);
-  reply.send({ success: true, data: invocations });
+  reply.send({ success: true, data: invocations ?? [] });
 }

@@ -22,7 +22,7 @@ const config  = require('../../config/config');
 
 const {
   sendVoiceWebhook,
-  listVoiceCalls,
+  pollForCall,
   getVoiceCallEvents,
   retryVoiceEvent,
 } = require('../../core/apiClient');
@@ -65,12 +65,7 @@ async function seedCall(providerCallId) {
     throw new Error(`seedCall: webhook rejected with ${res.status}: ${JSON.stringify(res.data)}`);
   }
 
-  const list = await listVoiceCalls(TOKEN);
-  if (list.status !== 200 || !list.data?.success) {
-    throw new Error(`seedCall: GET /voice/calls failed: ${JSON.stringify(list.data)}`);
-  }
-  const call = list.data.data.find((c) => c.provider_call_id === providerCallId);
-  if (!call) throw new Error(`seedCall: call ${providerCallId} not found after webhook`);
+  const call = await pollForCall(TOKEN, providerCallId);
   return call.id;
 }
 

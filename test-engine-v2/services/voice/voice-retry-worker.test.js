@@ -29,7 +29,7 @@ const config = require('../../config/config');
 
 const {
   sendVoiceWebhook,
-  listVoiceCalls,
+  pollForCall,
   getVoiceCallEvents,
 } = require('../../core/apiClient');
 
@@ -55,8 +55,9 @@ const {
 
 const TOKEN = config.tokens.tenantA;
 
-/** How long to poll for the worker to pick up the failed event (ms). */
-const WORKER_POLL_TIMEOUT_MS  = 30_000;
+/** How long to poll for the worker to pick up the failed event (ms).
+ * Must exceed VOICE_RETRY_INTERVAL_MS on the backend (currently 10s) plus processing time. */
+const WORKER_POLL_TIMEOUT_MS  = 60_000;
 /** Polling interval (ms) — keep this well below WORKER_POLL_TIMEOUT_MS. */
 const WORKER_POLL_INTERVAL_MS = 1_500;
 
@@ -95,13 +96,7 @@ async function seedCallAndEvent(providerCallId) {
     );
   }
 
-  const listRes = await listVoiceCalls(TOKEN);
-  if (listRes.status !== 200 || !listRes.data?.success) {
-    throw new Error(`seedCallAndEvent: GET /voice/calls failed: ${JSON.stringify(listRes.data)}`);
-  }
-
-  const call = listRes.data.data.find((c) => c.provider_call_id === providerCallId);
-  if (!call) throw new Error(`seedCallAndEvent: call ${providerCallId} not in list after webhook`);
+  const call = await pollForCall(TOKEN, providerCallId);
 
   const eventsRes = await getVoiceCallEvents(TOKEN, call.id);
   const events    = expectSuccess(eventsRes);

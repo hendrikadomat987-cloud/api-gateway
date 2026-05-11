@@ -19,7 +19,7 @@
  */
 
 const config = require('../../config/config');
-const { sendVoiceWebhook, listVoiceCalls } = require('../../core/apiClient');
+const { sendVoiceWebhook } = require('../../core/apiClient');
 const {
   buildVapiStatusUpdate,
   buildVapiToolCall,

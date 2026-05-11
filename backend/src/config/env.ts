@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+// z.coerce.boolean() uses Boolean(value), so the string "false" becomes true.
+// This parser correctly handles env-var strings: "false"/"0"/"" → false, everything else → true.
+const envBoolean = z
+  .string()
+  .optional()
+  .transform((v) => v !== undefined && v !== '' && v !== 'false' && v !== '0')
+  .or(z.boolean());
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
@@ -12,7 +20,7 @@ const schema = z.object({
   JWT_AUDIENCE: z.string().optional(),
   VAPI_WEBHOOK_SECRET: z.string().min(1, 'VAPI_WEBHOOK_SECRET is required'),
   // ── Voice retry worker ──────────────────────────────────────────────────────
-  VOICE_RETRY_ENABLED:      z.coerce.boolean().default(false),
+  VOICE_RETRY_ENABLED:      envBoolean.default(false),
   VOICE_RETRY_INTERVAL_MS:  z.coerce.number().int().min(1000).default(60_000),
   VOICE_RETRY_BATCH_SIZE:   z.coerce.number().int().min(1).max(100).default(10),
   VOICE_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(3),

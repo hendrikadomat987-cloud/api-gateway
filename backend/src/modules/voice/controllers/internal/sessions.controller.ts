@@ -9,8 +9,8 @@ export async function getSessionHandler(
   reply: FastifyReply,
 ): Promise<void> {
   const session = await findSessionById(request.tenantId, request.params.id);
-  if (!session || session.tenant_id !== request.tenantId) {
-    throw new VoiceSessionNotFoundError(request.params.id);
+  if (!session) {
+    return reply.send({ success: true, data: null });
   }
   reply.send({ success: true, data: session });
 }
@@ -21,7 +21,7 @@ export async function setSessionFallbackHandler(
   reply: FastifyReply,
 ): Promise<void> {
   const session = await findSessionById(request.tenantId, request.params.id);
-  if (!session || session.tenant_id !== request.tenantId) {
+  if (!session) {
     throw new VoiceSessionNotFoundError(request.params.id);
   }
 
@@ -35,7 +35,7 @@ export async function setSessionFallbackHandler(
     reason: 'manual_fallback',
   });
 
-  reply.send({ success: true, data: updatedSession });
+  reply.send({ success: true, data: updatedSession ?? null });
 }
 
 /** C.3.2 — Controlled handover transition. */
@@ -44,7 +44,7 @@ export async function setSessionHandoverHandler(
   reply: FastifyReply,
 ): Promise<void> {
   const session = await findSessionById(request.tenantId, request.params.id);
-  if (!session || session.tenant_id !== request.tenantId) {
+  if (!session) {
     throw new VoiceSessionNotFoundError(request.params.id);
   }
 
@@ -58,5 +58,5 @@ export async function setSessionHandoverHandler(
     reason: 'manual_handover',
   });
 
-  reply.send({ success: true, data: updatedSession });
+  reply.send({ success: true, data: updatedSession ?? null });
 }

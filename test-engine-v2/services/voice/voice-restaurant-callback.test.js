@@ -12,7 +12,7 @@ const config = require('../../config/config');
 
 const {
   sendVoiceWebhook,
-  listVoiceCalls,
+  pollForCall,
   getVoiceCall,
   getCallSession,
   getVoiceCallEvents,
@@ -53,17 +53,7 @@ describe('voice / restaurant / callback', () => {
       );
     }
 
-    const list = await listVoiceCalls(TOKEN);
-    if (list.status !== 200 || !list.data?.success) {
-      throw new Error(`Setup failed — GET /voice/calls returned ${list.status}`);
-    }
-    const call = list.data.data.find((c) => c.provider_call_id === CALL_ID);
-    if (!call) {
-      throw new Error(
-        `Setup failed — call not found in list after webhook.\n` +
-        `provider_call_id: ${CALL_ID}`,
-      );
-    }
+    const call = await pollForCall(TOKEN, CALL_ID);
     internalCallId = call.id;
   });
 

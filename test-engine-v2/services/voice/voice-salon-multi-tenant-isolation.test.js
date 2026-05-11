@@ -31,6 +31,7 @@ const config = require('../../config/config');
 const {
   sendVoiceWebhook,
   listVoiceCalls,
+  pollForCall,
   getVoiceCall,
   getVoiceCallEvents,
 } = require('../../core/apiClient');
@@ -100,14 +101,10 @@ describe('voice / salon / same-domain multi-tenant isolation', () => {
       throw new Error(`Setup: Studio Nord webhook rejected with ${resSN.status}: ${JSON.stringify(resSN.data)}`);
     }
 
-    const listML = await listVoiceCalls(TOKEN_MORGENLICHT);
-    const callML = listML.data?.data?.find((c) => c.provider_call_id === ML_CALL_ID);
-    if (!callML) throw new Error(`Setup: Morgenlicht call not found: ${ML_CALL_ID}`);
+    const callML = await pollForCall(TOKEN_MORGENLICHT, ML_CALL_ID);
     mlInternalId = callML.id;
 
-    const listSN = await listVoiceCalls(TOKEN_STUDIO_NORD);
-    const callSN = listSN.data?.data?.find((c) => c.provider_call_id === SN_CALL_ID);
-    if (!callSN) throw new Error(`Setup: Studio Nord call not found: ${SN_CALL_ID}`);
+    const callSN = await pollForCall(TOKEN_STUDIO_NORD, SN_CALL_ID);
     snInternalId = callSN.id;
   });
 

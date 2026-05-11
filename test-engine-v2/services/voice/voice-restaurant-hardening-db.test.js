@@ -20,7 +20,7 @@ const path   = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const config = require('../../config/config');
-const { sendVoiceWebhook, listVoiceCalls } = require('../../core/apiClient');
+const { sendVoiceWebhook, pollForCall } = require('../../core/apiClient');
 const {
   buildVapiStatusUpdate,
   buildVapiToolCall,
@@ -44,7 +44,7 @@ let pgPool = null;
 async function getPool() {
   if (pgPool) return pgPool;
   const { Pool } = require('pg');
-  pgPool = new Pool({ connectionString: VOICE_TEST_DB_URL });
+  pgPool = new Pool({ connectionString: VOICE_TEST_DB_URL, max: 2, ssl: { rejectUnauthorized: false } });
   return pgPool;
 }
 
@@ -111,9 +111,7 @@ async function setupCall(callId) {
     buildVapiStatusUpdate(callId, {}, VAPI_RESTAURANT_ASSISTANT_ID),
   );
   if (res.status >= 300) throw new Error(`Setup failed: ${res.status}`);
-  const list = await listVoiceCalls(TOKEN);
-  const call = list.data?.data?.find((c) => c.provider_call_id === callId);
-  if (!call) throw new Error(`Call not found: ${callId}`);
+  const call = await pollForCall(TOKEN, callId);
   return call.id;
 }
 

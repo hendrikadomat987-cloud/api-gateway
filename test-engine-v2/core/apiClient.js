@@ -22,12 +22,30 @@ function sleep(ms) {
  * @param {number} maxAttempts
  * @param {number} baseDelayMs
  */
+/**
+ * Unwraps an AggregateError (undici / Node 18+ fetch happy-eyeballs) so that
+ * the root-cause code and message are visible in test output and retry logic.
+ */
+function unwrapError(err) {
+  if (err && err.name === 'AggregateError' && Array.isArray(err.errors) && err.errors.length > 0) {
+    const first = err.errors[0];
+    const wrapped = new Error(
+      `AggregateError[${err.errors.length}]: ${first.message || String(first)}`,
+    );
+    wrapped.code  = first.code  || err.code  || 'EAGGREGATE';
+    wrapped.cause = first;
+    return wrapped;
+  }
+  return err;
+}
+
 async function withRetry(fn, maxAttempts = config.retries, baseDelayMs = config.retryDelayMs) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
-    } catch (err) {
+    } catch (rawErr) {
+      const err = unwrapError(rawErr);
       lastError = err;
       const isTransient = err.code && RETRIABLE_CODES.has(err.code);
       if (!isTransient || attempt >= maxAttempts) throw err;
@@ -128,6 +146,46 @@ function sendVoiceWebhook(message) {
  */
 function listVoiceCalls(token) {
   return createClient({ token }).get('/voice/calls');
+}
+
+/**
+ * Poll GET /voice/calls until a call with the given provider_call_id appears
+ * (or the timeout expires). Returns the call row.
+ *
+ * Under full-suite DB load the single immediate lookup can miss the newly
+ * inserted row if the pool is momentarily busy. Polling for up to 30s makes
+ * setupCall deterministic without touching the backend.
+ *
+ * @param {string} token
+ * @param {string} providerCallId
+ * @param {{ timeoutMs?: number, intervalMs?: number }} [opts]
+ * @returns {Promise<object>} the call row
+ */
+async function pollForCall(token, providerCallId, opts = {}) {
+  const timeoutMs  = opts.timeoutMs  ?? 45_000;
+  const intervalMs = opts.intervalMs ?? 1_000;
+  const deadline   = Date.now() + timeoutMs;
+
+  let lastCount = 0;
+  while (Date.now() < deadline) {
+    let list;
+    try {
+      list = await listVoiceCalls(token);
+    } catch (_) {
+      // Network/timeout error — keep polling until deadline
+      await new Promise((r) => setTimeout(r, intervalMs));
+      continue;
+    }
+    const rows = list.data?.data ?? [];
+    lastCount  = rows.length;
+    const call = rows.find((c) => c.provider_call_id === providerCallId);
+    if (call) return call;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error(
+    `pollForCall: call not found after ${timeoutMs}ms — ` +
+    `providerCallId=${providerCallId}, last list count=${lastCount}`,
+  );
 }
 
 /**
@@ -491,6 +549,7 @@ module.exports = {
   sendVoiceWebhook,
   sendVoiceWebhookSigned,
   listVoiceCalls,
+  pollForCall,
   getVoiceCall,
   getCallSession,
   getVoiceCallEvents,
