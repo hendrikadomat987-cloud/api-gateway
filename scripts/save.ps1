@@ -20,12 +20,17 @@ git add .
 git commit -m "$Message ($Name)" 2>$null
 if ($LASTEXITCODE -ne 0) {
   Write-Host "No new code changes to commit or commit failed. Continuing..."
+  $global:LASTEXITCODE = 0
 }
 
 Write-Host "Creating/updating Git tag..."
+$ErrorActionPreference = "Continue"
 git tag -d $GitTag 2>$null
+$ErrorActionPreference = "Stop"
 $global:LASTEXITCODE = 0
+
 git tag $GitTag
+if ($LASTEXITCODE -ne 0) { throw "Git tag creation failed" }
 
 Write-Host "Creating DB + n8n backup..."
 & "$PSScriptRoot\backup.ps1" -Name $Name
